@@ -10,6 +10,7 @@ add_executable(ExprInter
     Token.cpp
     Tokenizer.cpp
     Parser.cpp
+    Range.cpp
     Expr.cpp
     SymbolTable.cpp
     Statements.cpp

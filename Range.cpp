@@ -4,14 +4,50 @@
 
 using namespace std;
 
-// EvaluatedRange(int start, int stop, int step);
+/*
+ constructor reports a runtime error if step is zero. 
+ This error occurs before the loop variable is assigned 
+ or the suite is executed, even if the range would otherwise 
+ be empty.
+ */
+EvaluatedRange::EvaluatedRange(int start, int stop, int step)
+    : start_{start}, stop_{stop}, step_{step} {
+        if (step == 0){
+            throw std::runtime_error(
+                "step cannot be zero");
+        }
+    }
 
-//     [[nodiscard]] int start() const;
-//     [[nodiscard]] int stop() const;
-//     [[nodiscard]] int step() const;
 
-//     [[nodiscard]] bool hasIteration() const;
-//     [[nodiscard]] bool shouldContinue(int nextValue) const;
+int EvaluatedRange::start() const {
+    return start_{start};
+}
+int EvaluatedRange::stop() const {
+    return stop_{stop};
+}
+int EvaluatedRange::step() const {
+    return step_{step};
+}
+
+/*
+determines whether the start value belongs to the range. 
+For a positive step, it returns whether start < stop. 
+For a negative step, it returns whether start > stop.
+*/
+bool EvaluatedRange::hasIteration() const {
+    if (step_ > 0) {
+        return start_ < stop_;
+    } else {
+        return start_ > stop_;
+    }
+}
+bool EvaluatedRange::shouldContinue(int nextValue) const {
+    if (step_ > 0) {
+        return nextValue < stop_;
+    } else {
+        return nextValue > stop_;
+    }
+}
 
 
 // For range(stop), startExpression and 

@@ -10,6 +10,8 @@ enum class Keyword {
     none,
     forKeyword,
     printKeyword
+    inKeyword
+    rangeKeyword
 };
 
 class Token {
@@ -18,6 +20,12 @@ public:
     [[nodiscard]] bool isNewline() const { return _newline; }
     void markAsEof() { _eof = true; }
     void markAsNewline() { _newline = true; }
+
+    // Phase 2: indent and dedent tokens
+    [[nodiscard]] bool isIndent() const { return _indent; }
+    [[nodiscard]] bool isDedent() const { return _dedent; }
+    void markAsIndent() { _indent = true; }
+    void markAsDedent() { _dedent = true; }
 
     void setLocation(std::size_t line, std::size_t column) {
         _lineNumber = line;
@@ -60,6 +68,9 @@ public:
     [[nodiscard]] bool isOpenBrace() const { return _symbol == '{'; }
     [[nodiscard]] bool isCloseBrace() const { return _symbol == '}'; }
 
+    [[nodiscard]] bool isColon() const {return _symbol == ':';}
+    [[nodiscard]] bool isComma() const {return _symbol == ',';}
+
     void setIdentifier(std::string identifier) { _identifier = std::move(identifier); }
     [[nodiscard]] bool isIdentifier() const { return !_identifier.empty(); }
     [[nodiscard]] const std::string &identifier() const { return _identifier; }
@@ -68,6 +79,9 @@ public:
     [[nodiscard]] bool isKeyword() const { return _keyword != Keyword::none; }
     [[nodiscard]] bool isForKeyword() const { return _keyword == Keyword::forKeyword; }
     [[nodiscard]] bool isPrintKeyword() const { return _keyword == Keyword::printKeyword; }
+    // Phase 2: new keywords added for "in" and "range"
+    [[nodiscard]] bool isInKeyword() const {return _keyword == Keyword::inKeyword; }
+    [[nodiscard]] bool isRangeKeyword() const {return _keyword == Keyword::rangeKeyword; }
     [[nodiscard]] Keyword keyword() const { return _keyword; }
 
     void setIntegerValue(int value) {
@@ -84,6 +98,8 @@ private:
     Keyword _keyword{Keyword::none};
     bool _eof{false};
     bool _newline{false};
+    bool _indent{false};
+    bool _dedent{false};
     bool _isInteger{false};
     char _symbol{'\0'};
     char _nextSymbol{'\0'};

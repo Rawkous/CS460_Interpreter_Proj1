@@ -7,6 +7,8 @@
 #include "Statements.hpp"
 #include "Token.hpp"
 #include "Tokenizer.hpp"
+// Phase 2 added class
+#include "Range.hpp"
 
 class Parser {
 public:
@@ -19,6 +21,19 @@ public:
     // Added: derived function declarations for print-statement and for-statement
     PrintStatement *printStatement();
     ForStatement *forStatement();
+    /*
+    Phase 2: 
+    <for-statement> -> "for" <id> "in" <range> ":" <suite>
+
+    <range> -> "range" "(" <range-arguments> ")"
+
+    <range-arguments>
+        -> <rel-expr>
+        | <rel-expr> "," <rel-expr>
+        | <rel-expr> "," <rel-expr> "," <rel-expr>
+    */
+    EvaluatedRange *range();
+    RangeExpression *rangeArguments();
 
     ExprNode *relExpr();
     ExprNode *relTerm();

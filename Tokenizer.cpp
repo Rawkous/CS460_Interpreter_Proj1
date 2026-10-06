@@ -88,6 +88,95 @@ Token Tokenizer::getToken() {
        return lastToken;
    }
 
+    if (!pendingTokens.empty()) {
+        Token token = pendingTokens.front();
+        pendingTokens.pop_front();
+
+        tokens.push_back(token);
+        return lastToken = token;
+    }
+
+    if (atLineStart) {
+        std::size_t indentation = 0;
+
+        // Count leading spaces.
+        while (inputStream.peek() == ' ') {
+            char space;
+            getCharacter(space);
+            ++indentation;
+        }
+
+        // Tabs are illegal in leading indentation.
+        if (inputStream.peek() == '\t') {
+            std::cerr << "Tab used in leading indentation at line "
+                      << lineNumber << ".\n";
+            std::exit(EXIT_FAILURE);
+        }
+
+        // Blank/whitespace-only lines do not affect indentation.
+        if (inputStream.peek() == '\n') {
+            char newline;
+            getCharacter(newline);
+            atLineStart = true;
+            return getToken();
+        }
+
+        // Only compare indentation if this is a real source line.
+        if (inputStream.peek() != std::char_traits<char>::eof()) {
+
+            // Increased indentation -> INDENT.
+            if (indentation > indentationLevels.back()) {
+                indentationLevels.push_back(indentation);
+
+                Token indentToken;
+                indentToken.setLocation(lineNumber, columnNumber);
+                indentToken.markAsIndent();
+
+                pendingTokens.push_back(indentToken);
+            }
+
+                // Decreased indentation -> one or more DEDENTs.
+            else if (indentation < indentationLevels.back()) {
+                bool matchingLevel = false;
+
+                for (std::size_t level : indentationLevels) {
+                    if (level == indentation) {
+                        matchingLevel = true;
+                        break;
+                    }
+                }
+
+                if (!matchingLevel) {
+                    std::cerr << "Indentation at line "
+                              << lineNumber
+                              << " does not match an earlier indentation level.\n";
+                    std::exit(EXIT_FAILURE);
+                }
+
+                while (indentationLevels.back() > indentation) {
+                    indentationLevels.pop_back();
+
+                    Token dedentToken;
+                    dedentToken.setLocation(lineNumber, columnNumber);
+                    dedentToken.markAsDedent();
+
+                    pendingTokens.push_back(dedentToken);
+                }
+            }
+        }
+
+        atLineStart = false;
+
+        // If indentation processing created a token return it before the actual source token.
+        if (!pendingTokens.empty()) {
+            Token token = pendingTokens.front();
+            pendingTokens.pop_front();
+
+            tokens.push_back(token);
+            return lastToken = token;
+        }
+    }
+
 
    while (inputStream.peek() != std::char_traits<char>::eof()) {
        char character = static_cast<char>(inputStream.peek());
@@ -104,6 +193,7 @@ Token Tokenizer::getToken() {
            const auto newlineColumn = columnNumber;
            getCharacter(character);
 
+           atLineStart = true;
 
            if (lineContainsToken) {
                Token token;
@@ -128,12 +218,37 @@ Token Tokenizer::getToken() {
    token.setLocation(lineNumber, columnNumber);
 
 
-   if (inputStream.peek() == std::char_traits<char>::eof()) {
-       if (inputStream.bad()) {
-           std::cerr << "Error while reading the input stream in Tokenizer.\n";
-           std::exit(EXIT_FAILURE);
-       }
-       token.markAsEof();
+    if (inputStream.peek() == std::char_traits<char>::eof()) {
+
+        if (lineContainsToken) {
+            Token newlineToken;
+            newlineToken.setLocation(lineNumber, columnNumber);
+            newlineToken.markAsNewline();
+
+            lineContainsToken = false;
+
+            tokens.push_back(newlineToken);
+            return lastToken = newlineToken;
+        }
+
+        // Close any remaining indentation levels before EOF.
+        if (indentationLevels.size() > 1) {
+            indentationLevels.pop_back();
+
+            Token dedentToken;
+            dedentToken.setLocation(lineNumber, columnNumber);
+            dedentToken.markAsDedent();
+
+            tokens.push_back(dedentToken);
+            return lastToken = dedentToken;
+        }
+
+        if (inputStream.bad()) {
+            std::cerr << "Error while reading the input stream in Tokenizer.\n";
+            std::exit(EXIT_FAILURE);
+        }
+
+        token.markAsEof();
    } else {
        char character;
        getCharacter(character);
@@ -165,7 +280,8 @@ Token Tokenizer::getToken() {
                   character == '*' || character == '/' ||
                   character == '%' || character == ';' ||
                   character == '(' || character == ')' ||
-                  character == '{' || character == '}') {
+                  character == '{' || character == '}' ||
+                  character == ':' || character == ',' ){
 
 
            token.setSymbol(character);
@@ -177,6 +293,10 @@ Token Tokenizer::getToken() {
                token.setKeyword(Keyword::forKeyword);
            else if (identifier == "print")
                token.setKeyword(Keyword::printKeyword);
+           else if (identifier == "in")
+               token.setKeyword(Keyword::inKeyword);
+           else if (identifier == "range")
+               token.setKeyword(Keyword::rangeKeyword);
            else
                token.setIdentifier(std::move(identifier));
        } else {

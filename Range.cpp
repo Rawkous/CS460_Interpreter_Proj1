@@ -20,13 +20,13 @@ EvaluatedRange::EvaluatedRange(int start, int stop, int step)
 
 
 int EvaluatedRange::start() const {
-    return start_{start};
+    return start_;
 }
 int EvaluatedRange::stop() const {
-    return stop_{stop};
+    return stop_;
 }
 int EvaluatedRange::step() const {
-    return step_{step};
+    return step_;
 }
 
 /*
@@ -85,13 +85,13 @@ EvaluatedRange RangeExpression::evaluate(const SymbolTable& symbolTable) const {
 void RangeExpression::print(std::ostream& output) const {
     output << "range(";
     if (startExpression) {
-        startExpression->print(output);
+        startExpression->print();
         output << ", ";
     }
-    stopExpression->print(output);
+    stopExpression->print();
     if (stepExpression) {
         output << ", ";
-        stepExpression->print(output);
+        stepExpression->print();
     }
     output << ")";
 }

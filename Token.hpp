@@ -9,8 +9,8 @@
 enum class Keyword {
     none,
     forKeyword,
-    printKeyword
-    inKeyword
+    printKeyword,
+    inKeyword,
     rangeKeyword
 };
 

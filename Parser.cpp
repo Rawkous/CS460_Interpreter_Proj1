@@ -214,15 +214,15 @@ RangeExpression *Parser::rangeArguments() {
         return new RangeExpression(first);
     }
     // Case 2: <rel-expr> "," <rel-expr>
-    next = tokenizer.getToken();
     ExprNode *second = relExpr();
+    next = tokenizer.getToken();
     if (!next.isComma()) {
         tokenizer.ungetToken();
         return new RangeExpression(first, second);
     }
     // Case 3: <rel-expr> "," <rel-expr> "," <rel-expr>
     ExprNode *third = relExpr();
-    tokenizer.ungetToken();
+    
     return new RangeExpression(first, second, third);
 }
 

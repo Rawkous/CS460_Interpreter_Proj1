@@ -121,6 +121,8 @@ PrintStatement *Parser::printStatement() {
 // Added: The derived class for for statement
 ForStatement *Parser::forStatement() {
    // <for-statement> -> "for" (<assign-statement>) ; <rel-expr> ; <assign-statement>) {NEWLINE <statements>}
+   // new python implementation of for loop
+   //<for-statement> -> "for" <id> "in" <range> ":" <suite>
 
    Token forKeyword = tokenizer.getToken();
    if (!forKeyword.isForKeyword())
@@ -163,6 +165,65 @@ ForStatement *Parser::forStatement() {
        die("Parser::forStatement", "expected '}'", closeBrace);
 
    return new ForStatement(init, condition, update, body);
+}
+
+/*
+Phase 2: 
+ <for-statement> -> "for" <id> "in" <range> ":" <suite>
+
+<range>
+    -> "range" "(" <range-arguments> ")"
+
+<range-arguments>
+    -> <rel-expr>
+     | <rel-expr> "," <rel-expr>
+     | <rel-expr> "," <rel-expr> "," <rel-expr>
+*/
+RangeExpression *Parser::range() {
+    // <range>  -> "range" "(" <range-arguments> ")"
+    Token rangeKeyword = tokenizer.getToken();
+
+    if (!rangeKeyword.isRangeKeyword()) 
+    {
+        die("Parser::range", "expected 'range' keyword", rangeKeyword);
+    }
+    Token openParen = tokenizer.getToken();
+    if (!openParen.isOpenParen()) {
+       die("Parser::range", "expected '('", openParen);
+    }
+    RangeExpression *rangeExpression = rangeArguments();
+    
+    Token closeParen = tokenizer.getToken();
+    if (!closeParen.isCloseParen())
+       die("Parser::range", "expected ')'", closeParen);
+    
+    return rangeExpression;
+}
+
+
+RangeExpression *Parser::rangeArguments() {
+    // <range-arguments>  -> <rel-expr> | <rel-expr> "," <rel-expr>
+    //  | <rel-expr> "," <rel-expr> "," <rel-expr>
+
+    ExprNode *first = relExpr();
+
+    // Case 1: <rel-expr>
+    Token next = tokenizer.getToken();
+    if (!next.isComma()) {
+        tokenizer.ungetToken();
+        return new RangeExpression(first);
+    }
+    // Case 2: <rel-expr> "," <rel-expr>
+    next = tokenizer.getToken();
+    ExprNode *second = relExpr();
+    if (!next.isComma()) {
+        tokenizer.ungetToken();
+        return new RangeExpression(first, second);
+    }
+    // Case 3: <rel-expr> "," <rel-expr> "," <rel-expr>
+    ExprNode *third = relExpr();
+    tokenizer.ungetToken();
+    return new RangeExpression(first, second, third);
 }
 
 

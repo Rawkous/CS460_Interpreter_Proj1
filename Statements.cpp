@@ -72,58 +72,41 @@ void PrintStatement::print() const {
     std::cout << '\n';
 }
 
-// ForStatement class implementation 
+// Python-style ForStatement class implementation
+ForStatement::ForStatement(std::string variableName, RangeExpression *rangeExpr, Statements *bodyStmts)
+        : variableName{std::move(variableName)}, rangeExpr{rangeExpr}, bodyStmts{bodyStmts} {}
 
-ForStatement::ForStatement(AssignmentStatement *initStmt, ExprNode *condition, AssignmentStatement *updateStmt, Statements *bodyStmts)
-    : initStmt{initStmt}, condition{condition}, updateStmt{updateStmt}, bodyStmts{bodyStmts} {}
 
-// Destructor for all pointers created
+// Destructor for ForStatement
 ForStatement::~ForStatement() {
-    delete initStmt;
-    delete condition;
-    delete updateStmt;
+    delete rangeExpr;
     delete bodyStmts;
 }
 
-// Evaluate the for statement 
-void ForStatement::evaluate(SymbolTable & symbolTable) const {
-   
+// Evaluate the python-style for statement
+void ForStatement::evaluate(SymbolTable &symbolTable) const {
+    EvaluatedRange range = rangeExpr->evaluate(symbolTable);
 
-    // Evaluate initialization assignment once.
-    initStmt->evaluate(symbolTable);
-
-    // Evaluate the relational condition before every iteration of the loop. 
-    int value = condition->evaluate(symbolTable);
-    if (value == 0) {
-        // If the condition evaluates to zero, exit the loop without executing the body.
+    if (!range.hasIteration())
         return;
-    }
 
-    // Continue while the condition evaluates to a nonzero value.
-    while (value != 0) {
-        // Evaluate every statement in the loop body.
+    int nextValue = range.start();
+
+    while (range.shouldContinue(nextValue)) {
+        symbolTable.setValueFor(variableName, nextValue);
+
         bodyStmts->evaluate(symbolTable);
 
-        // Evaluate the update assignment after every iteration of the loop.
-        updateStmt->evaluate(symbolTable);
-
-        // Re-evaluate the relational condition for the next iteration.
-        value = condition->evaluate(symbolTable);
+        nextValue += range.step();
     }
 }
 
-
-// Print complete for statement
-// for-statement -> "for" (<assign-statement>) ; <rel-expr> ; <assign-statement>) {NEWLINE <statements>}
+// Print complete python-style for statement
+// <for-statement> -> "for" <id> "in" <range> ":" <suite>
 void ForStatement::print() const {
-    std::cout << "for (";
-    initStmt->printInline();
-    std::cout << "; ";
-    condition->print();
-    std::cout << "; ";
-    updateStmt->printInline();
-    std::cout << ") {\n";
-    bodyStmts->print();
-    std::cout << "}\n";
+    std::cout << "for " << variableName << " in ";
+    rangeExpr->print(std::cout);
+    std::cout << ":\n";
 
+    bodyStmts->print();
 }

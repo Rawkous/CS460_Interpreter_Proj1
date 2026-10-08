@@ -5,6 +5,7 @@
 #include <vector>
 
 #include "Expr.hpp"
+#include "Range.hpp"
 #include "SymbolTable.hpp"
 
 
@@ -60,20 +61,19 @@ private:
     ExprNode *printExpr;
 };
 
-
-// The derived class for for-statement -> "for" (<assign-statement>) ; <rel-expr> ; <assign-statement>) {NEWLINE <statements>}
+// Python-style for loops:
 class ForStatement final : public Statement {
 public:
-    ForStatement(AssignmentStatement *initStmt, ExprNode *condition, AssignmentStatement *updateStmt, Statements *bodyStmts);
+    ForStatement(std::string variableName, RangeExpression *rangeExpr, Statements *bodyStmts);
+
     ~ForStatement() override;
 
     void evaluate(SymbolTable &symbolTable) const override;
     void print() const override;
 
 private:
-    AssignmentStatement *initStmt;
-    ExprNode *condition;
-    AssignmentStatement *updateStmt;
+    std::string variableName;
+    RangeExpression *rangeExpr;
     Statements *bodyStmts;
 };
 

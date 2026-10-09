@@ -12,3 +12,8 @@ indent/dedent, colon and comma. Updated Token.cpp with the appropriate new token
 Updated the tokenizer to include a queue for the indentation levels as well as handling the
 new tokens added to Token.hpp. Fixed syntax issue in enum class Keyword in token.hpp. In range.cpp
 I fixed the returns relating to start, stop and step and the calls to print in RangeExpression::print
+
+### 10/7/26 11am - 1pm:
+#### Mel:
+Updated statements.hpp and statements.cpp ForStatement class to be python-style which involved a new constructor,
+destructor, evaluate and print functions. 

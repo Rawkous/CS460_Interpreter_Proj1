@@ -6,7 +6,7 @@
 #include <iosfwd>
 #include <string>
 #include <vector>
-
+#include <deque>
 #include "Token.hpp"
 
 class Tokenizer {
@@ -24,6 +24,9 @@ private:
     std::vector<Token> tokens{};
     std::size_t lineNumber{1};
     std::size_t columnNumber{1};
+    std::deque<Token> pendingTokens{};
+    std::vector<std::size_t> indentationLevels{0};
+    bool atLineStart{true};
     bool lineContainsToken{false};
 
     bool getCharacter(char &character);

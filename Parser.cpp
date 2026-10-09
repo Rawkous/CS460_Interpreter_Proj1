@@ -223,6 +223,65 @@ RangeExpression *Parser::rangeArguments() {
     return new RangeExpression(first, second, third);
 }
 
+/*
+Phase 2: 
+ <for-statement> -> "for" <id> "in" <range> ":" <suite>
+
+<range>
+    -> "range" "(" <range-arguments> ")"
+
+<range-arguments>
+    -> <rel-expr>
+     | <rel-expr> "," <rel-expr>
+     | <rel-expr> "," <rel-expr> "," <rel-expr>
+*/
+RangeExpression *Parser::range() {
+    // <range>  -> "range" "(" <range-arguments> ")"
+    Token rangeKeyword = tokenizer.getToken();
+
+    if (!rangeKeyword.isRangeKeyword()) 
+    {
+        die("Parser::range", "expected 'range' keyword", rangeKeyword);
+    }
+    Token openParen = tokenizer.getToken();
+    if (!openParen.isOpenParen()) {
+       die("Parser::range", "expected '('", openParen);
+    }
+    RangeExpression *rangeExpression = rangeArguments();
+    
+    Token closeParen = tokenizer.getToken();
+    if (!closeParen.isCloseParen())
+       die("Parser::range", "expected ')'", closeParen);
+    
+    return rangeExpression;
+}
+
+
+RangeExpression *Parser::rangeArguments() {
+    // <range-arguments>  -> <rel-expr> | <rel-expr> "," <rel-expr>
+    //  | <rel-expr> "," <rel-expr> "," <rel-expr>
+
+    ExprNode *first = relExpr();
+
+    // Case 1: <rel-expr>
+    Token next = tokenizer.getToken();
+    if (!next.isComma()) {
+        tokenizer.ungetToken();
+        return new RangeExpression(first);
+    }
+    // Case 2: <rel-expr> "," <rel-expr>
+    ExprNode *second = relExpr();
+    next = tokenizer.getToken();
+    if (!next.isComma()) {
+        tokenizer.ungetToken();
+        return new RangeExpression(first, second);
+    }
+    // Case 3: <rel-expr> "," <rel-expr> "," <rel-expr>
+    ExprNode *third = relExpr();
+    
+    return new RangeExpression(first, second, third);
+}
+
 
 ExprNode *Parser::relExpr() {
    // <rel-expr> -> <rel-term> [ <equality-op> <rel-term> ]

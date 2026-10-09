@@ -5,12 +5,20 @@
 void Token::print(std::ostream &output) const {
     if (isNewline())
         output << "NEWLINE";
+    else if (isIndent())
+        output << "INDENT";
+    else if (isDedent())
+        output << "DEDENT";
     else if (isEof())
         output << "EOF";
     else if (isForKeyword())
         output << "for";
     else if (isPrintKeyword())
         output << "print";
+    else if (isInKeyword())
+        output << "in";
+    else if (isRangeKeyword())
+        output << "range";
     else if (isOpenParen())
         output << '(';
     else if (isCloseParen())
@@ -30,6 +38,10 @@ void Token::print(std::ostream &output) const {
         output << " = ";
     else if (isSemicolon())
         output << ';';
+    else if (isColon())
+        output << ':';
+    else if (isComma())
+        output << ',';
     else if (isMultiplicationOperator())
         output << " * ";
     else if (isAdditionOperator())

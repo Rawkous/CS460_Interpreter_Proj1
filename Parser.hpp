@@ -17,6 +17,7 @@ public:
     Statements *program();
     Statements *statements();
     Statement *statement();
+    Statements *suite(); // Phase 2: added suite() function declaration
     AssignmentStatement *assignmentStatement();
     // Added: derived function declarations for print-statement and for-statement
     PrintStatement *printStatement();
@@ -32,7 +33,7 @@ public:
         | <rel-expr> "," <rel-expr>
         | <rel-expr> "," <rel-expr> "," <rel-expr>
     */
-    EvaluatedRange *range();
+    RangeExpression *range();
     RangeExpression *rangeArguments();
 
     ExprNode *relExpr();

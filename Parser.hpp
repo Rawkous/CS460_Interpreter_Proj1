@@ -33,7 +33,7 @@ public:
         | <rel-expr> "," <rel-expr>
         | <rel-expr> "," <rel-expr> "," <rel-expr>
     */
-    EvaluatedRange *range();
+    RangeExpression *range();
     RangeExpression *rangeArguments();
 
     ExprNode *relExpr();

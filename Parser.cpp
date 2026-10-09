@@ -37,7 +37,7 @@ Statements *Parser::statements() {
    parsedStatements->addStatement(statement());
 
    Token next = tokenizer.getToken();
-   while (next.isIdentifier() || next.isKeyword() || next.isForKeyword() || next.isPrintKeyword()) {
+   while (next.isIdentifier() || next.isForKeyword() || next.isPrintKeyword()) {
        tokenizer.ungetToken();
 
        parsedStatements->addStatement(statement());
@@ -51,7 +51,8 @@ Statements *Parser::statements() {
 
 
 Statement *Parser::statement() {
-   //phase 2: <statement> → <simple-statement> NEWLINE <compound-statement>
+   //phase 2: <statement> → <simple-statement> NEWLINE
+   //                     | <compound-statement>
    Token token = tokenizer.getToken();
   
    // compound: for-statement
@@ -134,8 +135,10 @@ ForStatement *Parser::forStatement() {
    RangeExpression *rangeExpr = range();
 
    Token colon = tokenizer.getToken();
-   if (!colon.isColon())
+   if (!colon.isColon()) {
+       delete rangeExpr;
        die("Parser::forStatement", "expected ':'", colon);
+   }
 
    Statements *bodyStmts = suite();
 
@@ -153,13 +156,14 @@ Statements *Parser::suite() {
     if (!indent.isIndent()) {
         die("Parser::suite", "expected INDENT", indent);
     }
-    Statements *statements = this->statements();
+    Statements *body = statements();
 
     Token dedent = tokenizer.getToken();
     if (!dedent.isDedent()) {
+        delete body;
         die("Parser::suite", "expected DEDENT", dedent);
     }
-    return statements;
+    return body;
 }
 /*
 Phase 2: 
@@ -188,9 +192,10 @@ RangeExpression *Parser::range() {
     RangeExpression *rangeExpression = rangeArguments();
     
     Token closeParen = tokenizer.getToken();
-    if (!closeParen.isCloseParen())
-       die("Parser::range", "expected ')'", closeParen);
-    
+    if (!closeParen.isCloseParen()) {
+        delete rangeExpression;
+        die("Parser::range", "expected ')'", closeParen);
+    }
     return rangeExpression;
 }
 

@@ -1,0 +1,6 @@
+limit = 4
+step = 1
+for i in range(0, limit, step):
+    print i
+    limit = 1
+    step = 3

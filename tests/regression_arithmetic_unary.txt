@@ -1,0 +1,12 @@
+a = 2 + 3 * 4
+b = (2 + 3) * 4
+c = -5 + 10
+d = +7
+e = 20 / 5
+f = 20 % 6
+print a
+print b
+print c
+print d
+print e
+print f

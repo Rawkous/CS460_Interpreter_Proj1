@@ -35,8 +35,8 @@ int main(int argc, char *argv[]) {
         return EXIT_FAILURE;
     }
 
-    std::cout << "\nSymbol table contains the following variables:\n";
-    symbolTable.print();
+    // std::cout << "\nSymbol table contains the following variables:\n";
+    // symbolTable.print();
     delete statements;
     return EXIT_SUCCESS;
 }

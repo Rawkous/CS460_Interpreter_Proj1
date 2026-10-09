@@ -31,34 +31,19 @@ Statements *Parser::program() {
 
 
 Statements *Parser::statements() {
-   // <statements> -> <statement> NEWLINE { <statement> NEWLINE }
+   // phase 2: <statements> → <statement> { <statement> }
    auto *parsedStatements = new Statements();
+
    parsedStatements->addStatement(statement());
 
-
-   Token newline = tokenizer.getToken();
-   if (!newline.isNewline()) {
-       delete parsedStatements;
-       die("Parser::statements", "expected NEWLINE after statement", newline);
-   }
-
-
    Token next = tokenizer.getToken();
-   while (next.isIdentifier() || next.isKeyword()) {
+   while (next.isIdentifier() || next.isKeyword() || next.isForKeyword() || next.isPrintKeyword()) {
        tokenizer.ungetToken();
+
        parsedStatements->addStatement(statement());
-
-
-       newline = tokenizer.getToken();
-       if (!newline.isNewline()) {
-           delete parsedStatements;
-           die("Parser::statements", "expected NEWLINE after statement", newline);
-       }
-
 
        next = tokenizer.getToken();
    }
-
 
    tokenizer.ungetToken();
    return parsedStatements;
@@ -66,28 +51,40 @@ Statements *Parser::statements() {
 
 
 Statement *Parser::statement() {
-   // <statement> -> <for-statement>
-   //             | <assignment-statement>
-   //             | <print-statement>
+   //phase 2: <statement> → <simple-statement> NEWLINE <compound-statement>
    Token token = tokenizer.getToken();
-
-
+  
+   // compound: for-statement
+   if (token.isForKeyword()) {
+       tokenizer.ungetToken();
+       return forStatement();
+   }  
+   // Simple: assignment-statement
    if (token.isIdentifier()) {
        tokenizer.ungetToken();
-       return assignmentStatement();
+       
+       Statement *stmt = assignmentStatement();
+       Token newline = tokenizer.getToken();
+         if (!newline.isNewline()) {
+             delete stmt;
+             die("Parser::statement", "expected NEWLINE after assignment statement", newline);
+         }
+       return stmt;
    }
-   // Updated to handle for-statements and print-statements, which we implemented in the extended interpreter.
-   if (token.isForKeyword()) {
-         tokenizer.ungetToken();
-         return forStatement();
-   }
-   if (token.isPrintKeyword()) {
+   // Simple: print-statement
+    if (token.isPrintKeyword()) {
        tokenizer.ungetToken();
-       return printStatement();
+
+       Statement *stmt = printStatement();
+       Token newline = tokenizer.getToken();
+         if (!newline.isNewline()) {
+             delete stmt;
+             die("Parser::statement", "expected NEWLINE after print statement", newline);
+         }
+       return stmt;
    }
-
-
-   die("Parser::statement", "expected a statement", token);
+   
+   die("Parser::statement", "expected assignment, print, or for statement", token);
 }
 
 
@@ -164,65 +161,6 @@ Statements *Parser::suite() {
     }
     return statements;
 }
-/*
-Phase 2: 
- <for-statement> -> "for" <id> "in" <range> ":" <suite>
-
-<range>
-    -> "range" "(" <range-arguments> ")"
-
-<range-arguments>
-    -> <rel-expr>
-     | <rel-expr> "," <rel-expr>
-     | <rel-expr> "," <rel-expr> "," <rel-expr>
-*/
-RangeExpression *Parser::range() {
-    // <range>  -> "range" "(" <range-arguments> ")"
-    Token rangeKeyword = tokenizer.getToken();
-
-    if (!rangeKeyword.isRangeKeyword()) 
-    {
-        die("Parser::range", "expected 'range' keyword", rangeKeyword);
-    }
-    Token openParen = tokenizer.getToken();
-    if (!openParen.isOpenParen()) {
-       die("Parser::range", "expected '('", openParen);
-    }
-    RangeExpression *rangeExpression = rangeArguments();
-    
-    Token closeParen = tokenizer.getToken();
-    if (!closeParen.isCloseParen())
-       die("Parser::range", "expected ')'", closeParen);
-    
-    return rangeExpression;
-}
-
-
-RangeExpression *Parser::rangeArguments() {
-    // <range-arguments>  -> <rel-expr> | <rel-expr> "," <rel-expr>
-    //  | <rel-expr> "," <rel-expr> "," <rel-expr>
-
-    ExprNode *first = relExpr();
-
-    // Case 1: <rel-expr>
-    Token next = tokenizer.getToken();
-    if (!next.isComma()) {
-        tokenizer.ungetToken();
-        return new RangeExpression(first);
-    }
-    // Case 2: <rel-expr> "," <rel-expr>
-    ExprNode *second = relExpr();
-    next = tokenizer.getToken();
-    if (!next.isComma()) {
-        tokenizer.ungetToken();
-        return new RangeExpression(first, second);
-    }
-    // Case 3: <rel-expr> "," <rel-expr> "," <rel-expr>
-    ExprNode *third = relExpr();
-    
-    return new RangeExpression(first, second, third);
-}
-
 /*
 Phase 2: 
  <for-statement> -> "for" <id> "in" <range> ":" <suite>

@@ -17,3 +17,7 @@ I fixed the returns relating to start, stop and step and the calls to print in R
 #### Mel:
 Updated statements.hpp and statements.cpp ForStatement class to be python-style which involved a new constructor,
 destructor, evaluate and print functions. 
+
+### 10/9/26 11am - 3pm:
+#### Mel:
+Cleaned up memory allocation in Parser.cpp and added relevant phase 2 test files. Tested on blue with no issues.

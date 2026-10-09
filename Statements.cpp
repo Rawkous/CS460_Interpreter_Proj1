@@ -4,6 +4,10 @@
 
 #include "Statements.hpp"
 
+namespace {
+    int printIndentLevel = 0;
+}
+
 Statements::~Statements() {
     for (auto *statement : statements)
         delete statement;
@@ -14,8 +18,14 @@ void Statements::addStatement(Statement *statement) {
 }
 
 void Statements::print() const {
-    for (const auto *statement : statements)
-        statement->print();
+    for (const auto *statement : statements) {
+
+        // Print indentation based on the current level
+        for (int i = 0; i < printIndentLevel; ++i) {
+            std::cout << "   "; // 3 spaces for each indentation level
+        }
+    statement->print();
+    }
 }
 
 void Statements::evaluate(SymbolTable &symbolTable) const {
@@ -77,36 +87,52 @@ ForStatement::ForStatement(std::string variableName, RangeExpression *rangeExpr,
         : variableName{std::move(variableName)}, rangeExpr{rangeExpr}, bodyStmts{bodyStmts} {}
 
 
-// Destructor for ForStatement
+// Destructor for all pointers created in ForStatement
 ForStatement::~ForStatement() {
     delete rangeExpr;
     delete bodyStmts;
 }
 
-// Evaluate the python-style for statement
-void ForStatement::evaluate(SymbolTable &symbolTable) const {
+// Evaluate the for statement 
+void ForStatement::evaluate(SymbolTable & symbolTable) const {
+   
+    // Range expression
     EvaluatedRange range = rangeExpr->evaluate(symbolTable);
 
-    if (!range.hasIteration())
-        return;
+    if (!range.hasIteration()) {
+        return; // No iterations to perform
+    }
 
+    // Initialize nextValue to the start of the range
     int nextValue = range.start();
 
     while (range.shouldContinue(nextValue)) {
+        // Set the loop variable in the symbol table
         symbolTable.setValueFor(variableName, nextValue);
 
+        // Evaluate the body statements
         bodyStmts->evaluate(symbolTable);
 
+        // Update nextValue for the next iteration
         nextValue += range.step();
     }
 }
 
-// Print complete python-style for statement
+
+/// Print complete python-style for statement
 // <for-statement> -> "for" <id> "in" <range> ":" <suite>
 void ForStatement::print() const {
+
     std::cout << "for " << variableName << " in ";
     rangeExpr->print(std::cout);
     std::cout << ":\n";
 
+    // for deeper indentation, increment level
+    ++printIndentLevel;
+
+    // Print loop body one level deeper
     bodyStmts->print();
+
+    // Decrement indentation level after printing body
+    --printIndentLevel;
 }

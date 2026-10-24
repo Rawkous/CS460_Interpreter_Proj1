@@ -8,6 +8,7 @@
 #include <vector>
 #include <deque>
 #include "Token.hpp"
+#include <cstdint>
 
 class Tokenizer {
 public:
@@ -31,7 +32,10 @@ private:
 
     bool getCharacter(char &character);
     std::string readIdentifier(char firstCharacter);
-    int readInteger(char firstDigit);
+    // Phase 3: readInteger now supports int64, added readDouble and readString
+    std::int64_t readInteger(char firstDigit);
+    double readDouble(std::string integerPart);
+    std::string readString(char openingQuote);
 
     static bool isDigit(char character);
     static bool isIdentifierStart(char character);

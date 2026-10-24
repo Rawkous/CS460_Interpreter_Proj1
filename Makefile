@@ -1,7 +1,7 @@
-CXX = c++
-CXXFLAGS = -g -std=c++20 -Wall -Wextra -Wpedantic
-TARGET = interpreter.x
-OBJECTS = Token.o Tokenizer.o Parser.o Range.o Expr.o ValueDescriptor.o SymbolTable.o Statements.o main.o
+CXX      = c++
+CXXFLAGS = -g -std=c++20 -Wall -Wextra -Wpedantic -MMD -MP
+TARGET   = interpreter.x
+OBJECTS  = Token.o Tokenizer.o Parser.o Range.o Expr.o ValueDescriptor.o SymbolTable.o Statements.o main.o
 
 $(TARGET): $(OBJECTS)
 	$(CXX) $(CXXFLAGS) -o $@ $(OBJECTS)
@@ -9,16 +9,9 @@ $(TARGET): $(OBJECTS)
 %.o: %.cpp
 	$(CXX) $(CXXFLAGS) -c $< -o $@
 
-ValueDescriptor.o: ValueDescriptor.cpp ValueDescriptor.hpp
-Token.o: Token.cpp Token.hpp
-Tokenizer.o: Tokenizer.cpp Tokenizer.hpp Token.hpp
-Range.o: Range.cpp Range.hpp
-Expr.o: Expr.cpp Expr.hpp Token.hpp SymbolTable.hpp
-SymbolTable.o: SymbolTable.cpp SymbolTable.hpp
-Parser.o: Parser.cpp Parser.hpp Token.hpp Tokenizer.hpp Expr.hpp Statements.hpp
-Statements.o: Statements.cpp Statements.hpp Expr.hpp SymbolTable.hpp
-main.o: main.cpp Parser.hpp Tokenizer.hpp SymbolTable.hpp
+# Pull in the dependency files the compiler generates (-MMD).
+-include $(OBJECTS:.o=.d)
 
 .PHONY: clean
 clean:
-	rm -f $(OBJECTS) $(TARGET)
+	rm -f $(OBJECTS) $(OBJECTS:.o=.d) $(TARGET)

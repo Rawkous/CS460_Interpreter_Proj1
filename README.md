@@ -27,9 +27,6 @@
 **10/24/26: 1pm - 4pm**
 
 **Mel:**
-- Updated Tokenizer.hpp and Tokenizer.cpp to support 64-bit integers, doubles, and strings.
-- Implemented readDouble() and readString() in Tokenizer.cpp.
 - Updated getToken() to recognize integer and double literals, the new reserved keywords, and the // operator.
 - Implemented 64-bit integer overflow detection.
 - Added validation for malformed numeric literals, unsupported exponent notation, invalid string characters, and unterminated strings.
-- Tested the updated tokenizer on Blue using valid and invalid Phase 3 inputs and verified that Phase 2 indentation handling still worked.

@@ -3,6 +3,7 @@
 #include <iostream>
 #include <limits>
 #include <string>
+#include <stdexcept>
 
 
 #include "Tokenizer.hpp"
@@ -55,9 +56,9 @@ std::string Tokenizer::readIdentifier(char firstCharacter) {
    return identifier;
 }
 
-
-int Tokenizer::readInteger(char firstDigit) {
-   int value = firstDigit - '0';
+// Phase 3: Updated all references to int to now be int64
+std::int64_t Tokenizer::readInteger(char firstDigit) {
+   std::int64_t value = firstDigit - '0';
    while (inputStream.peek() != std::char_traits<char>::eof()) {
        char character = static_cast<char>(inputStream.peek());
        if (!isDigit(character))
@@ -65,8 +66,8 @@ int Tokenizer::readInteger(char firstDigit) {
 
 
        const int digit = character - '0';
-       if (value > (std::numeric_limits<int>::max() - digit) / 10) {
-           std::cerr << "Integer literal is too large at line " << lineNumber
+       if (value > (std::numeric_limits<std::int64_t>::max() - digit) / 10) {
+           std::cerr << "Invalid integer literal at line " << lineNumber
                      << ", column " << columnNumber << ".\n";
            std::exit(EXIT_FAILURE);
        }
@@ -76,6 +77,91 @@ int Tokenizer::readInteger(char firstDigit) {
        value = value * 10 + digit;
    }
    return value;
+}
+
+// Phase 3: readDouble recognizes double literals
+double Tokenizer::readDouble(std::string integerPart) {
+    std::string number = std::move(integerPart);
+
+    // Consume the decimal point
+    char decimalPoint;
+    getCharacter(decimalPoint);
+    number += decimalPoint;
+
+    // digit must follow the decimal point
+    if (inputStream.peek() == std::char_traits<char>::eof() ||
+        !isDigit(static_cast<char>(inputStream.peek()))) {
+
+        std::cerr << "Invalid double literal at line "
+                  << lineNumber << ", column "
+                  << columnNumber << ".\n";
+        std::exit(EXIT_FAILURE);
+    }
+
+    // Read the fractional digits
+    while (inputStream.peek() != std::char_traits<char>::eof() &&
+           isDigit(static_cast<char>(inputStream.peek()))) {
+
+        char digit;
+        getCharacter(digit);
+        number += digit;
+    }
+
+    // Reject invalid exponent notation and suffixes
+    if (inputStream.peek() != std::char_traits<char>::eof()) {
+        char next = static_cast<char>(inputStream.peek());
+
+        if (next == 'e' || next == 'E' ||
+            next == '.' || isIdentifierPart(next)) {
+
+            std::cerr << "Invalid double literal at line "
+                      << lineNumber << ", column "
+                      << columnNumber << ".\n";
+            std::exit(EXIT_FAILURE);
+        }
+    }
+
+    try {
+        return std::stod(number);
+    } catch (const std::exception &) {
+        std::cerr << "Invalid double literal at line "
+                  << lineNumber << ", column "
+                  << columnNumber << ".\n";
+        std::exit(EXIT_FAILURE);
+    }
+}
+
+// Phase 3: Read single-quoted and double-quoted strings
+std::string Tokenizer::readString(char openingQuote) {
+    std::string value;
+
+    while (inputStream.peek() != std::char_traits<char>::eof()) {
+        char character;
+        getCharacter(character);
+
+        // Matching quote ends the string
+        if (character == openingQuote) {
+            return value;
+        }
+
+        // Only printable ASCII characters are allowed
+        const unsigned char code = static_cast<unsigned char>(character);
+
+        if (code < 32 || code > 126 || character == '\\') {
+            std::cerr << "Invalid string literal at line "
+                      << lineNumber << ", column "
+                      << columnNumber << ".\n";
+            std::exit(EXIT_FAILURE);
+        }
+
+        value += character;
+    }
+
+    // EOF before the closing quote
+    std::cerr << "Unterminated string literal at line "
+              << lineNumber << ", column "
+              << columnNumber << ".\n";
+    std::exit(EXIT_FAILURE);
 }
 
 
@@ -254,10 +340,53 @@ Token Tokenizer::getToken() {
        getCharacter(character);
 
 
-       if (isDigit(character)) {
-           token.setIntegerValue(readInteger(character));
-       } else if (character == '=' || character == '>' ||
-                    character == '<' || character == '!') {
+       // Phase 3: integer/double scanner
+        if (isDigit(character)) {
+            std::string digits{character};
+
+            // Read all digits before a possible decimal point
+            while (inputStream.peek() != std::char_traits<char>::eof() &&
+                   isDigit(static_cast<char>(inputStream.peek()))) {
+
+                char digit;
+                getCharacter(digit);
+                digits += digit;
+            }
+
+            if (inputStream.peek() == '.') {
+                token.setDoubleValue(readDouble(digits));
+            } else {
+                if (inputStream.peek() != std::char_traits<char>::eof()) {
+                    char next = static_cast<char>(inputStream.peek());
+
+                    if (isIdentifierPart(next)) {
+                        std::cerr << "Invalid integer literal at line "
+                                  << token.lineNumber() << ", column "
+                                  << token.columnNumber() << ".\n";
+                        std::exit(EXIT_FAILURE);
+                    }
+                }
+                // Convert an integer literal with overflow detection
+                std::int64_t value = 0;
+
+                for (char digitChar : digits) {
+                    const int digit = digitChar - '0';
+
+                    if (value >
+                        (std::numeric_limits<std::int64_t>::max() - digit) / 10) {
+
+                        std::cerr << "Invalid integer literal at line "
+                                  << token.lineNumber() << ", column "
+                                  << token.columnNumber() << ".\n";
+                        std::exit(EXIT_FAILURE);
+                    }
+                    value = value * 10 + digit;
+                }
+                token.setIntegerValue(value);
+            }
+
+        } else if (character == '=' || character == '>' ||
+                   character == '<' || character == '!') {
 
 
        token.setSymbol(character);
@@ -283,12 +412,19 @@ Token Tokenizer::getToken() {
                   character == '{' || character == '}' ||
                   character == ':' || character == ',' ){
 
-
            token.setSymbol(character);
+            // Phase 3: Recognize integer floor division //
+            if (character == '/' && inputStream.peek() == '/') {
+                char nextCharacter;
+                getCharacter(nextCharacter);
+                token.setNextSymbol(nextCharacter);
+            }
 
-
-       } else if (isIdentifierStart(character)) {
-           std::string identifier = readIdentifier(character);
+        } else if (character == '"' || character == '\'') {
+            // Phase 3: String literal
+            token.setStringValue(readString(character));
+        } else if (isIdentifierStart(character)) {
+            std::string identifier = readIdentifier(character);
            if (identifier == "for")
                token.setKeyword(Keyword::forKeyword);
            else if (identifier == "print")
@@ -297,6 +433,13 @@ Token Tokenizer::getToken() {
                token.setKeyword(Keyword::inKeyword);
            else if (identifier == "range")
                token.setKeyword(Keyword::rangeKeyword);
+           // Phase 3: New reserved words
+           else if (identifier == "True")
+               token.setKeyword(Keyword::trueKeyword);
+           else if (identifier == "False")
+               token.setKeyword(Keyword::falseKeyword);
+           else if (identifier == "str")
+               token.setKeyword(Keyword::strKeyword);
            else
                token.setIdentifier(std::move(identifier));
        } else {

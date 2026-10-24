@@ -5,13 +5,17 @@
 #include <iosfwd>
 #include <string>
 #include <utility>
+#include <cstdint>
 
 enum class Keyword {
     none,
     forKeyword,
     printKeyword,
     inKeyword,
-    rangeKeyword
+    rangeKeyword,
+    trueKeyword,
+    falseKeyword,
+    strKeyword
 };
 
 class Token {
@@ -48,7 +52,8 @@ public:
     [[nodiscard]] bool isAdditionOperator() const { return _symbol == '+'; }
     [[nodiscard]] bool isSubtractionOperator() const { return _symbol == '-'; }
     [[nodiscard]] bool isModuloOperator() const { return _symbol == '%'; }
-    [[nodiscard]] bool isDivisionOperator() const { return _symbol == '/'; }
+    [[nodiscard]] bool isDivisionOperator() const { return _symbol == '/' && _nextSymbol =='\0'; }
+    [[nodiscard]] bool isFloorDivisionOperator() const {return _symbol == '/' && _nextSymbol == '/'; }
 
     // Extended comparison operators
     [[nodiscard]] bool isEqualOperator() const { return _symbol == '=' && _nextSymbol == '='; }
@@ -83,13 +88,31 @@ public:
     [[nodiscard]] bool isInKeyword() const {return _keyword == Keyword::inKeyword; }
     [[nodiscard]] bool isRangeKeyword() const {return _keyword == Keyword::rangeKeyword; }
     [[nodiscard]] Keyword keyword() const { return _keyword; }
+    // Phase 3: new keywords added true, false, str
+    [[nodiscard]] bool isTrueKeyword() const {return _keyword == Keyword::trueKeyword;}
+    [[nodiscard]] bool isFalseKeyword() const {return _keyword == Keyword::falseKeyword;}
+    [[nodiscard]] bool isStrKeyword() const {return _keyword == Keyword::strKeyword;}
 
-    void setIntegerValue(int value) {
+    void setIntegerValue(std::int64_t value) {
         _integerValue = value;
         _isInteger = true;
     }
     [[nodiscard]] bool isInteger() const { return _isInteger; }
-    [[nodiscard]] int integerValue() const { return _integerValue; }
+    [[nodiscard]] std::int64_t integerValue() const { return _integerValue; }
+
+    void setDoubleValue(double value) {
+        _doubleValue = value;
+        _isDouble = true;
+    }
+    [[nodiscard]] bool isDouble() const {return _isDouble;}
+    [[nodiscard]] double doubleValue() const {return _doubleValue;}
+
+    void setStringValue(std::string value) {
+        _stringValue = std::move(value);
+        _isString = true;
+    }
+    [[nodiscard]] bool isString() const {return _isString;}
+    [[nodiscard]] const std::string &stringValue() const {return _stringValue;}
 
     void print(std::ostream &output) const;
 
@@ -101,9 +124,13 @@ private:
     bool _indent{false};
     bool _dedent{false};
     bool _isInteger{false};
+    bool _isDouble{false};
+    bool _isString{false};
     char _symbol{'\0'};
     char _nextSymbol{'\0'};
-    int _integerValue{0};
+    std::int64_t _integerValue{0};
+    double _doubleValue{0.0};
+    std::string _stringValue{};
     std::size_t _lineNumber{0};
     std::size_t _columnNumber{0};
 };

@@ -19,6 +19,13 @@ void Token::print(std::ostream &output) const {
         output << "in";
     else if (isRangeKeyword())
         output << "range";
+    // Phase 3: added checks for true, false, and str
+    else if (isTrueKeyword())
+        output << "True";
+    else if (isFalseKeyword())
+        output << "False";
+    else if (isStrKeyword())
+        output << "str";
     else if (isOpenParen())
         output << '(';
     else if (isCloseParen())
@@ -52,10 +59,18 @@ void Token::print(std::ostream &output) const {
         output << " % ";
     else if (isDivisionOperator())
         output << " / ";
+    // Phase 3: added floor division check
+    else if (isFloorDivisionOperator())
+        output << " // ";
     else if (isIdentifier())
         output << identifier();
     else if (isInteger())
         output << integerValue();
+    // Phase 3: added double and string checks
+    else if (isDouble())
+        output << doubleValue();
+    else if (isString())
+        output << '"' << stringValue() << '"';
     else
         output << "uninitialized token";
 }

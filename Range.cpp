@@ -1,6 +1,9 @@
 #include "Range.hpp"
 
 #include <iostream>
+#include <cstdint>
+#include <memory>
+#include <stdexcept>
 
 using namespace std;
 
@@ -10,7 +13,7 @@ using namespace std;
  or the suite is executed, even if the range would otherwise 
  be empty.
  */
-EvaluatedRange::EvaluatedRange(int start, int stop, int step)
+EvaluatedRange::EvaluatedRange(std::int64_t start, std::int64_t stop, std::int64_t step)
     : start_{start}, stop_{stop}, step_{step} {
         if (step == 0){
             throw std::runtime_error(
@@ -19,13 +22,13 @@ EvaluatedRange::EvaluatedRange(int start, int stop, int step)
     }
 
 
-int EvaluatedRange::start() const {
+std::int64_t EvaluatedRange::start() const {
     return start_;
 }
-int EvaluatedRange::stop() const {
+std::int64_t EvaluatedRange::stop() const {
     return stop_;
 }
-int EvaluatedRange::step() const {
+std::int64_t EvaluatedRange::step() const {
     return step_;
 }
 
@@ -41,7 +44,7 @@ bool EvaluatedRange::hasIteration() const {
         return start_ > stop_;
     }
 }
-bool EvaluatedRange::shouldContinue(int nextValue) const {
+bool EvaluatedRange::shouldContinue(std::int64_t nextValue) const {
     if (step_ > 0) {
         return nextValue < stop_;
     } else {
@@ -73,11 +76,32 @@ RangeExpression::~RangeExpression() {
  evaluates each supplied expression exactly once and in source order.
  It applies start = 0 and step = 1 when the corresponding expressions are omitted,
  then constructs an EvaluatedRange from the three concrete values.
+ // Phase 3: Updated so each arg is evaluated and that its descriptor is an integer, extract the int64 value
+ // release temp descriptor
 */
 EvaluatedRange RangeExpression::evaluate(const SymbolTable& symbolTable) const {
-    const int startVal = startExpression ? startExpression->evaluate(symbolTable) : 0;
-    const int stopVal = stopExpression->evaluate(symbolTable);
-    const int stepVal = stepExpression ? stepExpression->evaluate(symbolTable) : 1;
+
+    auto evaluateInteger = [&](ExprNode *expression) -> std::int64_t {
+        std::unique_ptr<ValueDescriptor> value{
+                expression->evaluate(symbolTable)
+        };
+
+        if (value->type() != ValueDescriptor::Type::integer) {
+            throw std::runtime_error(
+                    "range argument must be integer, got " + value->typeName()
+            );
+        }
+
+        return static_cast<IntegerValueDescriptor *>(value.get())->value();
+    };
+
+    std::int64_t startVal = startExpression
+                            ? evaluateInteger(startExpression) : 0;
+
+    std::int64_t stopVal = evaluateInteger(stopExpression);
+
+    std::int64_t stepVal = stepExpression
+                           ? evaluateInteger(stepExpression) : 1;
 
     return EvaluatedRange(startVal, stopVal, stepVal);
 }

@@ -2,6 +2,7 @@
 #define RANGE_HPP
 
 #include <iosfwd>
+#include <cstdint>
 
 #include "Expr.hpp"
 #include "SymbolTable.hpp"
@@ -9,19 +10,19 @@
 
 class EvaluatedRange {
 public:
-    EvaluatedRange(int start, int stop, int step);
+    EvaluatedRange(std::int64_t start, std::int64_t stop, std::int64_t step);
 
-    [[nodiscard]] int start() const;
-    [[nodiscard]] int stop() const;
-    [[nodiscard]] int step() const;
+    [[nodiscard]] std::int64_t start() const;
+    [[nodiscard]] std::int64_t stop() const;
+    [[nodiscard]] std::int64_t step() const;
 
     [[nodiscard]] bool hasIteration() const;
-    [[nodiscard]] bool shouldContinue(int nextValue) const;
+    [[nodiscard]] bool shouldContinue(std::int64_t nextValue) const;
 
 private:
-    int start_;
-    int stop_;
-    int step_;
+    std::int64_t start_;
+    std::int64_t stop_;
+    std::int64_t step_;
 };
 
 class RangeExpression final {

@@ -285,7 +285,7 @@ ExprNode *Parser::arithExpr() {
    return left;
 }
 
-
+// Phase 3: added isFloorDivision condition to while loop
 ExprNode *Parser::arithTerm() {
    // <arith-term> -> <arith-primary> { <mult-op> <arith-primary> }
    ExprNode *left = arithPrimary();
@@ -294,7 +294,9 @@ ExprNode *Parser::arithTerm() {
 
    while (token.isMultiplicationOperator() ||
           token.isDivisionOperator() ||
-          token.isModuloOperator()) {
+          token.isModuloOperator() ||
+          token.isFloorDivisionOperator()) {
+
        ExprNode *right = arithPrimary();
        left = new BinaryExprNode(token, left, right);
        token = tokenizer.getToken();
@@ -317,25 +319,53 @@ ExprNode *Parser::arithPrimary() {
    return arithAtom();
 }
 
-
+// Phase 3: added support for double, bool and string literal types and str conversion
 ExprNode *Parser::arithAtom() {
-   // <arith-atom> -> <id> | <integer> | '(' <rel-expr> ')'
+    // <arith-atom> -> <id> | <literal>
+    //              | "str" "(" <rel-expr> ")"
+    //              | "(" <rel-expr> ")"
    Token token = tokenizer.getToken();
 
 
    if (token.isInteger())
        return new IntegerLiteral(token);
+   if (token.isDouble())
+       return new DoubleLiteral(token);
+   if (token.isTrueKeyword() || token.isFalseKeyword())
+       return new BooleanLiteral(token);
+   if (token.isString())
+       return new StringLiteral(token);
    if (token.isIdentifier())
        return new Variable(token);
+   // Phase 3: str conversion
+   if (token.isStrKeyword()) {
+       Token openParen = tokenizer.getToken();
+
+       if (!openParen.isOpenParen())
+           die("Parser::arithAtom", "expected '(' after str", openParen);
+
+       ExprNode *expression = relExpr();
+
+       Token closeParen = tokenizer.getToken();
+
+       if (!closeParen.isCloseParen()) {
+           delete expression;
+           die("Parser::arithAtom", "expected ')' after str expression", closeParen);
+       }
+       return new StrConversion(token, expression);
+   }
+
    if (token.isOpenParen()) {
        ExprNode *expression = relExpr();
        Token closeParen = tokenizer.getToken();
-       if (!closeParen.isCloseParen())
+       if (!closeParen.isCloseParen()) {
+           delete expression;
            die("Parser::arithAtom", "expected ')'", closeParen);
+           }
        return expression;
    }
 
 
-   die("Parser::arithAtom", "expected an identifier, integer, or '('", token);
+   die("Parser::arithAtom", "expected an identifier, literal, str, or '('", token);
 }
 

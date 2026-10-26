@@ -30,3 +30,16 @@
 - Updated getToken() to recognize integer and double literals, the new reserved keywords, and the // operator.
 - Implemented 64-bit integer overflow detection.
 - Added validation for malformed numeric literals, unsupported exponent notation, invalid string characters, and unterminated strings.
+
+**10/25/26: 1pm - 3pm, 4pm - 7:30pm
+
+**Mel:**
+- Updated Parser.cpp to recognize double, boolean and string literals.
+- Updated arithAtom() for the new expression nodes for the data types and str() conversion.
+- arithTerm() now recognizes floor division operator //.
+- Added error handling for phase 3 grammar
+- Range.hpp and Range.cpp now use int_64t for values
+- RangeExpression::evaluate() evaluates range arguments using ValueDescriptor objects
+- Statements.cpp now works with ValueDescriptor
+- PrintStatement::evaluate uses toString() to print integers, doubles, bool. and string
+- ForStatement::evaluate uses 64-bit integers and loop variables are now IntegerValueDescriptor objects

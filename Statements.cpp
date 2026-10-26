@@ -1,6 +1,7 @@
 #include <iostream>
 #include <string>
 #include <utility>
+#include <memory>
 
 #include "Statements.hpp"
 
@@ -68,9 +69,12 @@ PrintStatement::~PrintStatement() {
 }
 
 // Evaluate the print statement by evaluating the expression and printing its value
+// Phase 3: prints all types correctly and deletes temp descriptor
 void PrintStatement::evaluate(SymbolTable &symbolTable) const {
-    int value = printExpr->evaluate(symbolTable);
-    std::cout << value << '\n';
+    std::unique_ptr<ValueDescriptor> value{
+            printExpr->evaluate(symbolTable)
+    };
+    std::cout << value->toString() << '\n';
     
 }
 
@@ -104,11 +108,11 @@ void ForStatement::evaluate(SymbolTable & symbolTable) const {
     }
 
     // Initialize nextValue to the start of the range
-    int nextValue = range.start();
+    std::int64_t nextValue = range.start();
 
     while (range.shouldContinue(nextValue)) {
         // Set the loop variable in the symbol table
-        symbolTable.setValueFor(variableName, nextValue);
+        symbolTable.setValueFor(variableName, new IntegerValueDescriptor(nextValue));
 
         // Evaluate the body statements
         bodyStmts->evaluate(symbolTable);

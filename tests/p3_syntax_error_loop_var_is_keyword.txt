@@ -1,0 +1,2 @@
+for True in range(3):
+    print 1

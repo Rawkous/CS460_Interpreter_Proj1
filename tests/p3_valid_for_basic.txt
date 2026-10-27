@@ -1,0 +1,6 @@
+total = 0
+for i in range(5):
+    total = total + i
+print total
+for j in range(1, 4):
+    print j

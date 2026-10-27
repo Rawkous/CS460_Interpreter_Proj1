@@ -1,0 +1,19 @@
+i = 42
+d = 3.14159265
+b = False
+s = "text"
+big = 1234567.0
+print i
+print str(i)
+print d
+print str(d)
+print b
+print str(b)
+print s
+print str(s)
+print big
+print str(big)
+print str(i) == "42"
+print str(d) == "3.14159"
+print str(b) == "False"
+print str(big) == "1.23457e+06"

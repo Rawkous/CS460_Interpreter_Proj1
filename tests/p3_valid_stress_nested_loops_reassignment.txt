@@ -1,0 +1,10 @@
+count = 0
+for a in range(50):
+    for b in range(40):
+        count = count + 1
+        x = "v" + str(count)
+        x = x + "!"
+        y = count / 4
+print count
+print x
+print y

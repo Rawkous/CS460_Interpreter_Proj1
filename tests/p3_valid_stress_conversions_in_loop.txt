@@ -1,0 +1,7 @@
+s = ""
+total = 0
+for i in range(2000):
+    total = total + i * 2 - i // 3 % 5
+    t = str(i) + ":" + str(total / 2)
+print total
+print t

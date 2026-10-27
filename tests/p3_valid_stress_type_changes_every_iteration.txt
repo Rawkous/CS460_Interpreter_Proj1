@@ -1,0 +1,7 @@
+v = 0
+for i in range(300):
+    v = i
+    v = v / 2
+    v = str(v)
+    v = v + "x"
+print v

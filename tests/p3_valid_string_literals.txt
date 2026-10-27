@@ -1,0 +1,10 @@
+a = "hello"
+b = 'hello'
+c = ""
+d = "don't"
+e = 'The title is "Interpreter Design"'
+print a
+print b
+print c
+print d
+print e

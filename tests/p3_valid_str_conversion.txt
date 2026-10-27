@@ -1,0 +1,12 @@
+count = 12
+message = "count = " + str(count)
+print message
+print str(42)
+print str(2.5)
+print str(True)
+print str("hello")
+print str(1 + 2)
+print str(1 / 4)
+print str(5) + str(6)
+x = str(10)
+print x + "!"

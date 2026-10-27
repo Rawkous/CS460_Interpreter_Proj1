@@ -1,0 +1,6 @@
+print 1234567.0
+print 0.00001
+print 100000.0
+print 1000000.0
+print 3.14159265
+print 2.0 * 3.0

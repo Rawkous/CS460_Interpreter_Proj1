@@ -1,0 +1,10 @@
+a = 3
+b = 2.5
+print +a
+print -a
+print +b
+print -b
+print -(a + b)
+print +(-a)
+print 5 - -2
+print 2 * -b

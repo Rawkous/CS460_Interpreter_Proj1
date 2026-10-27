@@ -1,0 +1,6 @@
+course = "CS " + "460"
+print course
+a = "" + ""
+print a
+b = 'x' + "y"
+print b

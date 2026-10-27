@@ -1,0 +1,20 @@
+a = -5 // 2
+b = -5 % 2
+c = 5 // -2
+d = 5 % -2
+e = 7 // 2
+f = 7 % 2
+g = -7 // -2
+h = -7 % -2
+i = 6 // 3
+j = 6 % 3
+print a
+print b
+print c
+print d
+print e
+print f
+print g
+print h
+print i
+print j

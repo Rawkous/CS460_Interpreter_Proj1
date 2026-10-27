@@ -1,0 +1,9 @@
+a = 0.5
+b = 3.14
+c = 25.0
+d = 1.2500
+print a
+print b
+print c
+print d
+print -2.5

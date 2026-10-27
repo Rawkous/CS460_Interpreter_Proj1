@@ -1,0 +1,8 @@
+print 1
+	
+print 2
+ 	 
+for i in range(2):
+    print i
+	
+    print "x"

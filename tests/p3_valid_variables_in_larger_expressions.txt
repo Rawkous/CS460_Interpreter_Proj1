@@ -1,0 +1,10 @@
+a = 6
+b = 4
+c = 2.5
+s = "n="
+print a * b - a // b
+print (a + b) / c
+print s + str(a + b)
+print a > b == True
+total = a + b * c - 1
+print total

@@ -1,0 +1,9 @@
+greeting = "hello world"
+
+for i in range(2):
+    for j in range(2):
+        print greeting + " " + str(i + j)
+
+    print "inner done"
+
+print "all done"

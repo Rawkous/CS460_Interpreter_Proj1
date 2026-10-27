@@ -1,0 +1,8 @@
+n = 7
+d = 0.5
+b = True
+print "n=" + str(n)
+print "d=" + str(d)
+print "b=" + str(b)
+print "s=" + str("x")
+print str(n) + str(d) + str(b)

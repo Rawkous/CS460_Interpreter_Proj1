@@ -51,6 +51,7 @@
 - ForStatement::evaluate uses 64-bit integers and loop variables are now IntegerValueDescriptor objects
 
 **10/25/26: 12pm - 3pm**
+
 **Axel:**
 - Updated Expr.hpp and Expr.cpp so every evaluate() returns a newly allocated ValueDescriptor * that the caller owns.
 - Variable::evaluate() returns a clone of the descriptor in the symbol table. Unary and binary expressions hold their operand descriptors in std::unique_ptr so they are deleted after the result is produced, including when an error is thrown.
@@ -59,6 +60,7 @@
 - Division, // and % check for a zero divisor (including 0.0 and -0.0) before dividing. Operand type errors name the operator, the operand types, and the line and column.
 
 **10/26/26: 3pm - 6pm**
+
 **Axel:**
 - Wrote the Phase 3 test programs in tests/ with descriptive names: literals, assignment and reassignment across types, every operator, str() and print formatting, loops, runtime errors, and invalid literals. Added expected outputs and a runner script (run_phase3_tests.sh).
 - Fixed the tokenizer so blank lines with Windows (\r\n) line endings and whitespace-only lines containing tabs are ignored instead of causing indentation errors.

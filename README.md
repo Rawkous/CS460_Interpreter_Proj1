@@ -62,5 +62,5 @@
 **10/26/26: 3pm - 6pm**
 
 **Axel:**
-- Wrote the Phase 3 test programs in tests/ with descriptive names: literals, assignment and reassignment across types, every operator, str() and print formatting, loops, runtime errors, and invalid literals. Added expected outputs and a runner script (run_phase3_tests.sh).
+- Wrote the Phase 3 test programs in tests/ with descriptive names: literals, assignment and reassignment across types, every operator, str() and print formatting, loops, runtime errors, and invalid literals.
 - Fixed the tokenizer so blank lines with Windows (\r\n) line endings and whitespace-only lines containing tabs are ignored instead of causing indentation errors.

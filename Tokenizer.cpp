@@ -191,9 +191,20 @@ Token Tokenizer::getToken() {
             getCharacter(space);
             ++indentation;
         }
+        
+        // Phase 3: fix
+        // Skip tabs, carriage returns and extra spaces so that whitespace-only lines
+        // (including lines ending in \r\n) are recognized as blank below.
+        bool sawTab = false;
+        while (inputStream.peek() == '\t' || inputStream.peek() == '\r' || inputStream.peek() == ' ') {
+            char skipped;
+            getCharacter(skipped);
+            if (skipped == '\t')
+                sawTab = true;
+        }
 
         // Tabs are illegal in leading indentation.
-        if (inputStream.peek() == '\t') {
+        if (sawTab && inputStream.peek() != '\n' && inputStream.peek() != std::char_traits<char>::eof()) {
             std::cerr << "Tab used in leading indentation at line "
                       << lineNumber << ".\n";
             std::exit(EXIT_FAILURE);
@@ -474,6 +485,3 @@ void Tokenizer::printProcessedTokens(std::ostream &output) const {
        output << '\n';
    }
 }
-
-
-

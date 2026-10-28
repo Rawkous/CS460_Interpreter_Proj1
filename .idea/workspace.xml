@@ -12,7 +12,11 @@
     </configurations>
   </component>
   <component name="ChangeListManager">
-    <list default="true" id="fbc4d98e-0406-4696-8c3c-284f9ceecc9b" name="Changes" comment="" />
+    <list default="true" id="fbc4d98e-0406-4696-8c3c-284f9ceecc9b" name="Changes" comment="">
+      <change afterPath="$PROJECT_DIR$/.idea/vcs.xml" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/README.md" beforeDir="false" afterPath="$PROJECT_DIR$/README.md" afterDir="false" />
+    </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
     <option name="HIGHLIGHT_NON_ACTIVE_CHANGELIST" value="false" />
@@ -79,6 +83,7 @@
     "RunOnceActivity.ShowReadmeOnStart": "true",
     "RunOnceActivity.cidr.known.project.marker": "true",
     "RunOnceActivity.readMode.enableVisualFormatting": "true",
+    "SHARE_PROJECT_CONFIGURATION_FILES": "true",
     "cf.first.check.clang-format": "false",
     "cidr.known.project.marker": "true",
     "git-widget-placeholder": "Mel",
@@ -106,7 +111,8 @@
       <workItem from="1791228615043" duration="4434000" />
       <workItem from="1791475462523" duration="7919000" />
       <workItem from="1791917951726" duration="98000" />
-      <workItem from="1792787119750" duration="15505000" />
+      <workItem from="1792787119750" duration="18017000" />
+      <workItem from="1793160223989" duration="1319000" />
     </task>
     <servers />
   </component>

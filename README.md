@@ -64,3 +64,14 @@
 **Axel:**
 - Wrote the Phase 3 test programs in tests/ with descriptive names: literals, assignment and reassignment across types, every operator, str() and print formatting, loops, runtime errors, and invalid literals.
 - Fixed the tokenizer so blank lines with Windows (\r\n) line endings and whitespace-only lines containing tabs are ignored instead of causing indentation errors.
+
+**10/27/26: 9pm - 10pm**
+
+**Mel:**
+- Compiled and tested the Phase 3 interpreter on blue using the Makefile
+- Ran Phase 3 tests that covered literals, arithmetic, string conversions, boolean comparisons, floor division
+range expressions, and runtime errors
+- Phase 1 and 2 regression tests preserve functionality
+- Tested 64-bit integer boundaries, large ranges, nested loops, and invalid operand combinations.
+- Ran a memory stress test with valgrind to check for no leaks or memory errors
+

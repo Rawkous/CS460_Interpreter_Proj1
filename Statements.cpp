@@ -1,7 +1,6 @@
 #include <iostream>
 #include <string>
 #include <utility>
-#include <memory>
 
 #include "Statements.hpp"
 
@@ -71,11 +70,9 @@ PrintStatement::~PrintStatement() {
 // Evaluate the print statement by evaluating the expression and printing its value
 // Phase 3: prints all types correctly and deletes temp descriptor
 void PrintStatement::evaluate(SymbolTable &symbolTable) const {
-    std::unique_ptr<ValueDescriptor> value{
-            printExpr->evaluate(symbolTable)
-    };
+    ValueDescriptor *value = printExpr->evaluate(symbolTable);
     std::cout << value->toString() << '\n';
-    
+    delete value;
 }
 
 

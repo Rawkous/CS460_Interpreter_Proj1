@@ -2,7 +2,6 @@
 
 #include <iostream>
 #include <cstdint>
-#include <memory>
 #include <stdexcept>
 
 using namespace std;
@@ -76,23 +75,23 @@ RangeExpression::~RangeExpression() {
  evaluates each supplied expression exactly once and in source order.
  It applies start = 0 and step = 1 when the corresponding expressions are omitted,
  then constructs an EvaluatedRange from the three concrete values.
- // Phase 3: Updated so each arg is evaluated and that its descriptor is an integer, extract the int64 value
- // release temp descriptor
 */
 EvaluatedRange RangeExpression::evaluate(const SymbolTable& symbolTable) const {
 
     auto evaluateInteger = [&](ExprNode *expression) -> std::int64_t {
-        std::unique_ptr<ValueDescriptor> value{
-                expression->evaluate(symbolTable)
-        };
+        ValueDescriptor *value = expression->evaluate(symbolTable);
 
         if (value->type() != ValueDescriptor::Type::integer) {
+            const std::string valueType = value->typeName();
+            delete value;
             throw std::runtime_error(
-                    "range argument must be integer, got " + value->typeName()
+                    "range argument must be integer, got " + valueType
             );
         }
 
-        return static_cast<IntegerValueDescriptor *>(value.get())->value();
+        const std::int64_t integerValue = static_cast<IntegerValueDescriptor *>(value)->value();
+        delete value;
+        return integerValue;
     };
 
     std::int64_t startVal = startExpression

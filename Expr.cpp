@@ -2,7 +2,6 @@
 #include <stdexcept>
 #include <string>
 #include <utility>
-#include <memory>
 #include <cstdint>
 
 #include "Expr.hpp"
@@ -179,20 +178,32 @@ namespace {
 }
 // evaluate now depends on the namespace for most of the actual evaluating process. 
 ValueDescriptor *BinaryExprNode::evaluate(const SymbolTable &symbolTable) const {
-   // Making Value Descriptor unique pointers so no need to delete
-    std::unique_ptr<ValueDescriptor> left{leftOperand->evaluate(symbolTable)};
-    std::unique_ptr<ValueDescriptor> right{rightOperand->evaluate(symbolTable)};
+    ValueDescriptor *left = leftOperand->evaluate(symbolTable);
+    ValueDescriptor *right = nullptr;
+    ValueDescriptor *result = nullptr;
     const Token &op = token();
 
-    if (op.isAdditionOperator ())        {return add(op, *left, *right);}
-    if (op.isSubtractionOperator())      {return subtract(op, *left, *right);}
-    if (op.isMultiplicationOperator())   {return multiply(op, *left, *right);}
-    if (op.isFloorDivisionOperator())    {return floorDivide(op, *left, *right);}
-    if (op.isDivisionOperator())         {return divide(op, *left, *right);}
-    if (op.isModuloOperator())           {return modulo(op, *left, *right);}
-    if (op.isEqualOperator())            {return equals(*left, *right, false);}
-    if (op.isNotEqualOperator())         {return equals(*left, *right, true);}
-    return compare(op, *left, *right);
+    try {
+        right = rightOperand->evaluate(symbolTable);
+
+        if (op.isAdditionOperator ())        {result = add(op, *left, *right);}
+        else if (op.isSubtractionOperator()) {result = subtract(op, *left, *right);}
+        else if (op.isMultiplicationOperator()) {result = multiply(op, *left, *right);}
+        else if (op.isFloorDivisionOperator())  {result = floorDivide(op, *left, *right);}
+        else if (op.isDivisionOperator())       {result = divide(op, *left, *right);}
+        else if (op.isModuloOperator())         {result = modulo(op, *left, *right);}
+        else if (op.isEqualOperator())          {result = equals(*left, *right, false);}
+        else if (op.isNotEqualOperator())       {result = equals(*left, *right, true);}
+        else                                    {result = compare(op, *left, *right);}
+    } catch (...) {
+        delete left;
+        delete right;   // still nullptr if evaluating the right operand failed
+        throw;
+    }
+
+    delete left;
+    delete right;
+    return result;
 }
 
 
@@ -216,24 +227,29 @@ UnaryExprNode::~UnaryExprNode() {
 
 ValueDescriptor *UnaryExprNode::evaluate(const SymbolTable &symbolTable) const {
     // phase 3: must delete descriptor after use to avoid memory leaks
-    std::unique_ptr<ValueDescriptor> value{expression->evaluate(symbolTable)};
+    ValueDescriptor *value = expression->evaluate(symbolTable);
     const bool negate = token().isSubtractionOperator();
 
     if (token().isAdditionOperator() || negate) {
         if (value->type() == Type::integer) {
             const std::int64_t number = isInt(*value);
+            delete value;
             return new IntegerValueDescriptor(negate ? -number : number);
         }
         if (value->type() == Type::doubleValue) {
             const double number = isDouble(*value);
+            delete value;
             return new DoubleValueDescriptor(negate ? -number : number);
         }
+        const string valueType = value->typeName();
+        delete value;
         throw std::runtime_error("type error at line " + to_string(token().lineNumber()) +
             ", column " + to_string(token().columnNumber()) +
             ": unary operator '" + string(1, token().symbol()) +
-            "' cannot be applied to " + value->typeName());
+            "' cannot be applied to " + valueType);
     }
 
+   delete value;
    throw std::logic_error("unsupported prefix operator");
 }
 
@@ -313,8 +329,10 @@ void StrConversion::print() const {
 
 
 ValueDescriptor *StrConversion::evaluate(const SymbolTable &symbolTable) const {
-   std::unique_ptr<ValueDescriptor> value{expression->evaluate(symbolTable)};
-   return new StringValueDescriptor(value->toString());
+   ValueDescriptor *value = expression->evaluate(symbolTable);
+   ValueDescriptor *result = new StringValueDescriptor(value->toString());
+   delete value;
+   return result;
 }
 
 

@@ -4,6 +4,8 @@
 #include "SymbolTable.hpp"
 #include "Token.hpp"
 #include "ValueDescriptor.hpp"
+#include "ListObject.hpp"
+#include <vector>
 
 class ExprNode {
 public:
@@ -94,6 +96,25 @@ public:
 
     void print() const override;
     [[nodiscard]] ValueDescriptor *evaluate(const SymbolTable &symbolTable) const override;
+};
+
+
+//Phase 4: <list-literal> -> "[" [ <rel-expr> { "," <rel-expr> } ] "]"
+class ListLiteral final : public ExprNode {
+public:
+    // token is the '[' token (used for error line/column)
+    // the node takes ownership of every pointer in elements
+    ListLiteral(Token token, std::vector<ExprNode *> elements);
+    ~ListLiteral() override;
+
+    ListLiteral(const ListLiteral &) = delete;
+    ListLiteral &operator=(const ListLiteral &) = delete;
+
+    void print() const override;
+    [[nodiscard]] ValueDescriptor *evaluate(const SymbolTable &symbolTable) const override;
+
+private:
+    std::vector<ExprNode *> elementExprs;
 };
 
 #endif // EXPRINTER_EXPR_HPP

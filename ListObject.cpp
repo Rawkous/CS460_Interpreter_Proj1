@@ -1,5 +1,6 @@
 #include "ListObject.hpp"
 #include <stdexcept>
+#include <string>
 using namespace std;
 
 
@@ -57,10 +58,15 @@ ListElementType ListObject::classifyElementType(const ValueDescriptor *value) co
 static void compatCheck(const ValueDescriptor *value, ListElementType category, ListElementType valueCategory, const string &operation) {
     // throws if values are incompatible, or if the value is a list
     if (value->type() == ValueDescriptor::Type::list) {
-        throw std::runtime_error("type error: cannot " + operation + " a list to another list");
+        throw std::runtime_error("type error: " + operation + ": a list cannot be an element of another list");
     }
     if (category != ListElementType::unset && valueCategory != category)
-        throw runtime_error(operation + " incompatible types: cannot add " + value->typeName() + " to a list of " + (category == ListElementType::numeric ? "numeric" : category == ListElementType::boolean ? "boolean" : "string"));
+        throw runtime_error("type error: " + operation + ": cannot store " + value->typeName() + " in a " + (category == ListElementType::numeric ? "numeric" : category == ListElementType::boolean ? "boolean" : "string") + " list");
+}
+
+// helper function to build index error messages that name the operation, index, and length
+static string indexError(const string &operation, std::size_t index, std::size_t length) {
+    return operation + ": index " + to_string(index) + " out of range for list of length " + to_string(length);
 }
 
 ListElementType ListObject::elementType() const {
@@ -72,7 +78,7 @@ ListElementType ListObject::elementType() const {
 
 ValueDescriptor* ListObject::cloneElementAt(std::size_t index) const {
     if (index >= elements.size()) {
-        throw std::out_of_range("Index out of range");
+        throw std::out_of_range(indexError("list subscript", index, elements.size()));
     }
     return elements[index]->clone();
 }
@@ -81,13 +87,13 @@ ValueDescriptor* ListObject::cloneElementAt(std::size_t index) const {
 void ListObject::setElement(std::size_t index, ValueDescriptor *value) {
     //bounds check
     if (index >= elements.size()) {
-        throw std::out_of_range("Index out of range");
+        throw std::out_of_range(indexError("list assignment", index, elements.size()));
     }
 
     const ListElementType valueCategory = classifyElementType(value);
 
     // call compatCheck to ensure the new descriptor is compatible with the list category
-    compatCheck(value, category, valueCategory, "setElement");
+    compatCheck(value, category, valueCategory, "list assignment");
 
     // if the list category is unset, set it to the type of the first element
     if (category == ListElementType::unset) {
@@ -119,7 +125,7 @@ void ListObject::append(ValueDescriptor *value) {
 ValueDescriptor* ListObject::pop() {
     // if its out of bounds, throw an exception
     if (elements.empty()) {
-        throw std::out_of_range("Cannot pop from an empty list");
+        throw std::out_of_range("pop: cannot pop from an empty list");
     }
     // get the last element
     ValueDescriptor *lastElement = elements.back();

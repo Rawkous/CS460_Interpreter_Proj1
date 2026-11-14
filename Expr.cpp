@@ -5,6 +5,7 @@
 #include <cstdint>
 
 #include "Expr.hpp"
+#include "ListObject.hpp"
 
 using namespace std;
 
@@ -347,4 +348,41 @@ void Variable::print() const {
 // Phase 3: now Returns a clone of the value descriptor associated with the variable in the symbol table
 ValueDescriptor *Variable::evaluate(const SymbolTable &symbolTable) const {
    return symbolTable.getValueFor(token().identifier())->clone();
+}
+
+// Phase 4: new ListLiteral class
+ListLiteral::ListLiteral(Token token, std::vector<ExprNode *> elements)
+    : ExprNode{std::move(token)}, elementExprs{std::move(elements)} {}
+
+ListLiteral::~ListLiteral() {
+    for (ExprNode *element : elementExprs) {
+        delete element;
+    }
+}
+// prints in the form [<element1>, <element2>, ..., <elementN>]
+void ListLiteral::print() const {
+    std::cout << '[';
+    for (std::size_t i = 0; i < elementExprs.size(); ++i) {
+        if (i > 0)
+            std::cout << ", ";
+        elementExprs[i]->print();
+    }
+    std::cout << ']';
+}
+
+ValueDescriptor *ListLiteral::evaluate(const SymbolTable &symbolTable) const {
+    ListValueDescriptor *listValue = new ListValueDescriptor(new ListObject());
+
+    for (ExprNode *elementExpr : elementExprs) {
+        ValueDescriptor *elementValue = nullptr;
+        try {
+            elementValue = elementExpr->evaluate(symbolTable);
+            listValue->object()->append(elementValue);
+        } catch (...) {
+            delete elementValue;
+            delete listValue;
+            throw;
+        }
+    }
+    return listValue;
 }

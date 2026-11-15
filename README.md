@@ -1,4 +1,4 @@
-#Interpreter Phase 4
+# Interpreter Phase 4
 Names: Mel Aveo, Brian Axel Martinez
 
 ## Contributions:
@@ -65,3 +65,6 @@ Mel:
 - Reviewed and corrected memory ownership and error handling for raw pointers.
 - Tested the completed interpreter to verify that Phase 4 features work together without breaking earlier functionality.
 - Verified list aliasing, reference counting, and runtime error handling.
+
+## AI Use
+- None

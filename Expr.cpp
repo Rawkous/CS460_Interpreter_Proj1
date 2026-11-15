@@ -3,6 +3,8 @@
 #include <string>
 #include <utility>
 #include <cstdint>
+#include <stdexcept>
+#include <iostream>
 
 #include "Expr.hpp"
 #include "ListObject.hpp"
@@ -141,6 +143,12 @@ namespace {
         return new IntegerValueDescriptor(a - floorQuotient(a, b) * b);
     }
 
+    // Phase 4 statement, "List Printing and Equality":
+    //   "Two lists are equal when they have the same length and corresponding elements are
+    //   equal according to the existing equality rules. Numeric equality permits an integer
+    //   and double with the same numeric value to compare equal. Lists of different lengths
+    //   or incompatible element categories are unequal. Two empty lists compare equal,
+    //   regardless of whether either empty list has already established an element category."
     ValueDescriptor *equals(const ValueDescriptor &left, const ValueDescriptor &right, bool invert) {
         bool same = false;
         if (left.type() == Type::integer && right.type() == Type::integer) {
@@ -151,6 +159,31 @@ namespace {
             same = isString(left) == isString(right);
         } else if (left.type() == Type::boolean && right.type() == Type::boolean) {
             same = isBool(left) == isBool(right);
+        }
+        else if (left.type() == Type::list && right.type() == Type::list) {
+           // Both operands are lists, so the casts below are safe.
+           const ListObject *leftList = static_cast<const ListValueDescriptor &>(left).object();
+           const ListObject *rightList = static_cast<const ListValueDescriptor &>(right).object();
+
+           // "Lists of different lengths ... are unequal."
+             same = leftList->size() == rightList->size();
+
+            // "corresponding elements are equal according to the existing equality rules"
+            // Ownership guide, "Reading an Element": "The list retains ownership of the stored
+            // descriptor. ... The caller owns the clone." Each clone is deleted after comparing.
+            for (std::size_t i = 0; same && i < leftList->size(); ++i) {
+                ValueDescriptor *leftElement = leftList->cloneElementAt(i);
+                ValueDescriptor *rightElement = rightList->cloneElementAt(i);
+                ValueDescriptor *result = equals(*leftElement, *rightElement, false);
+                bool elementsEqual = isBool(*result);
+                delete leftElement;
+                delete rightElement;
+                delete result;
+                if (!elementsEqual) {
+                    same = false;
+                    break;
+                }
+            }
         }
         return new BooleanValueDescriptor(same != invert);
     }
@@ -350,7 +383,11 @@ ValueDescriptor *Variable::evaluate(const SymbolTable &symbolTable) const {
    return symbolTable.getValueFor(token().identifier())->clone();
 }
 
-// Phase 4: helper function implementation
+// Phase 4: index check shared by subscripting and indexed assignment.
+// Phase 4 statement, "String Subscripting" / "List Subscripting":
+//   "The index must satisfy: 0 <= index < len(string)"
+//   "A non-integer or out-of-range index is a runtime error. Negative indexes are not supported."
+// This helper checks "integer" and "non-negative"; the upper bound is checked by the caller.
 std::size_t requireIndex(const ValueDescriptor *value, const std::string &operation) {
     if (value->type() != Type::integer) {
         throw runtime_error("type error: " + operation + ": index must be int, got " + value->typeName());
@@ -363,7 +400,10 @@ std::size_t requireIndex(const ValueDescriptor *value, const std::string &operat
 }
 
 
-// Phase 4: new ListLiteral class
+// Phase 4: list literal
+// Grammar: <list-literal> → [ [ <rel-expr> { , <rel-expr> } ] ]
+// Phase 4 statement, "Element Categories": "A nonempty list literal establishes its category
+//   from its elements. All elements must be compatible."
 ListLiteral::ListLiteral(Token token, std::vector<ExprNode *> elements)
     : ExprNode{std::move(token)}, elementExprs{std::move(elements)} {}
 
@@ -383,6 +423,9 @@ void ListLiteral::print() const {
     std::cout << ']';
 }
 
+// Ownership guide, "Error Paths Are Ownership Paths": "Organize the code so that an error
+//   path either deletes every temporary it owns or reports the error before ownership is
+//   acquired." Example given there: "A list literal whose third element has an incompatible type".
 ValueDescriptor *ListLiteral::evaluate(const SymbolTable &symbolTable) const {
     ListValueDescriptor *listValue = new ListValueDescriptor(new ListObject());
 
@@ -401,6 +444,11 @@ ValueDescriptor *ListLiteral::evaluate(const SymbolTable &symbolTable) const {
 }
 
 // Phase 4: one-argument calls. Each node owns its operand expression.
+// Grammar: <one-argument-call> → <one-argument-name> ( <rel-expr> )
+//          <one-argument-name> → "int" | "float" | "str" | "len" | "split" | "pop"
+// Phase 3/4 rule (Phase 4 statement, "Runtime Representation and Ownership"):
+//   "Every expression's evaluate function returns a newly allocated descriptor owned by its caller."
+
 // int(x)
 IntConversion::IntConversion(Token token, ExprNode *operand) 
 : ExprNode{std::move(token)}, expression{operand} {}
@@ -410,14 +458,65 @@ IntConversion::~IntConversion() {
     delete expression;
 }
 
-void IntConversion::print() const {}
+// print for int(x) is just "int(<operand>)"
+void IntConversion::print() const {
+    cout << "int(";
+    expression->print();
+    cout << ")";
+}
 
-
+// Phase 4 statement, "int, float, and str": "int(expression) accepts:
+//   An integer, which produces the same integer value
+//   A string containing an optional leading + or - followed by one or more decimal digits
+//   It does not accept a double, Boolean, list, empty string, surrounding whitespace, decimal
+//   point, or exponent notation. The converted value must fit in std::int64_t."
+//   "An invalid conversion is a runtime error. The error message should identify the
+//   conversion and the source value or datatype."
 ValueDescriptor *IntConversion::evaluate(const SymbolTable &symbolTable) const {
-    /*
-    int → copy; double → truncate; string → strict parse (the whole string must be an integer
-    , otherwise throw); anything else → type error
-    */
+   // The operand's descriptor is owned here and must be deleted on every path.
+   ValueDescriptor *value = expression->evaluate(symbolTable);
+   std::string where = "type error at line " + std::to_string(token().lineNumber()) +
+                        ", column " + std::to_string(token().columnNumber()) + ": ";
+    
+    // "An integer, which produces the same integer value"
+    if (value->type() == ValueDescriptor::Type::integer) {
+        std::int64_t intValue = static_cast<IntegerValueDescriptor *>(value)->value();
+        delete value;
+        return new IntegerValueDescriptor(intValue);
+    }
+    // "It does not accept a double, Boolean, list"
+    if (value->type() != ValueDescriptor::Type::string) {
+        std::string typeName = value->typeName();
+        delete value;
+        throw std::runtime_error(where + "int() cannot be applied to " + typeName);
+    }
+    // Copy the text, then free the operand; nothing below needs it.
+    string text = static_cast<StringValueDescriptor *>(value)->value();
+    delete value;
+
+    // "an optional leading + or - followed by one or more decimal digits"
+    // (rejects "empty string, surrounding whitespace, decimal point, or exponent notation")
+    size_t pos = 0;
+    if (pos < text.size() && (text[pos] == '+' || text[pos] == '-')) {
+        ++pos;
+    }
+    bool valid = pos < text.size();
+    for (; pos < text.size(); ++pos) {
+        if (text[pos] < '0' || text[pos] > '9') {
+            valid = false;
+            break;
+        }
+    }
+    // "The converted value must fit in std::int64_t." (stoll throws out_of_range otherwise)
+    try {
+        if (!valid) {
+            throw std::invalid_argument("invalid integer string");
+        }
+        std::int64_t intValue = std::stoll(text);
+        return new IntegerValueDescriptor(intValue);
+    } catch (const std::exception &e) {
+        throw std::runtime_error(where + "invalid integer string: " + text);
+    }
 }
 
 //Phase 4: float(x)
@@ -429,15 +528,91 @@ FloatConversion::~FloatConversion() {
 }
 
 
-void FloatConversion::print() const {}
-ValueDescriptor *FloatConversion::evaluate(const SymbolTable &symbolTable) const {
-    /*
-    int/double → double; 
-    string → strict parse (std::stod plus a check that every character was consumed);
-     otherwise type error*/
+void FloatConversion::print() const {
+    cout << "float(";
+    expression->print();
+    cout << ")";
 }
 
-// Phase 4: len(x): x is a string or a list
+// Phase 4 statement, "int, float, and str": "float(expression) accepts:
+//   A double, which produces the same double value
+//   An integer, which produces the corresponding double value
+//   A string containing an optional leading + or -, one or more decimal digits, and an
+//   optional fractional part containing a decimal point followed by one or more digits"
+//   "Forms such as float(".5"), float("5."), and float("1e3") are runtime conversion errors.
+//   A successful float conversion produces a DoubleValueDescriptor ... The result must be a
+//   finite value representable by double."
+ValueDescriptor *FloatConversion::evaluate(const SymbolTable &symbolTable) const {
+    ValueDescriptor *value = expression->evaluate(symbolTable);
+    std::string where = "type error at line " + std::to_string(token().lineNumber()) +
+                        ", column " + std::to_string(token().columnNumber()) + ": ";
+
+    // "An integer, which produces the corresponding double value"
+    if (value->type() == ValueDescriptor::Type::integer) {
+        double d = static_cast<double>(static_cast<IntegerValueDescriptor *>(value)->value());
+        delete value;
+        return new DoubleValueDescriptor(d);
+    }
+    // "A double, which produces the same double value"
+    if (value->type() == ValueDescriptor::Type::doubleValue) {
+        double d = static_cast<DoubleValueDescriptor *>(value)->value();
+        delete value;
+        return new DoubleValueDescriptor(d);
+    }
+
+    // Booleans and lists are not in the accepted list above.
+    if (value->type() != ValueDescriptor::Type::string) {
+        std::string typeName = value->typeName();
+        delete value;
+        throw std::runtime_error(where + "float() cannot be applied to " + typeName);
+    }
+
+    // Copy the text, then free the operand; nothing below needs it.
+    std::string text = static_cast<StringValueDescriptor *>(value)->value();
+    delete value;
+
+    // "an optional leading + or -, one or more decimal digits, and an optional fractional
+    // part containing a decimal point followed by one or more digits"
+    // "both float("42") and float("42.5") are valid"
+    std::size_t i = 0;
+    if (i < text.size() && (text[i] == '+' || text[i] == '-'))
+        i++;
+
+    std::size_t digitsBefore = 0;
+    while (i < text.size() && text[i] >= '0' && text[i] <= '9') {
+        i++;
+        digitsBefore++;
+    }
+
+    bool valid = digitsBefore > 0;
+    // "one or more decimal digits": rejects ".5"                
+    if (valid && i < text.size()) {
+        // skip the '.'
+        if (text[i] != '.') {
+            valid = false;                        
+        } else {
+            i++;                                  
+            std::size_t digitsAfter = 0;
+            while (i < text.size() && text[i] >= '0' && text[i] <= '9') {
+                i++;
+                digitsAfter++;
+            }
+            // "a decimal point followed by one or more digits": rejects "5."
+            valid = digitsAfter > 0 && i == text.size();
+        }
+    }
+    if (!valid)
+        throw std::runtime_error(where + "float() cannot convert \"" + text + "\"");
+
+    // "The result must be a finite value representable by double." (stod throws out_of_range)
+    try {
+        return new DoubleValueDescriptor(std::stod(text));
+    } catch (const std::out_of_range &) {
+        throw std::runtime_error(where + "float() value out of range: \"" + text + "\"");
+    }
+}
+
+// Phase 4: len(x)
 LenExpr::LenExpr(Token token, ExprNode *operand) 
 : ExprNode(std::move(token)), expression{operand} {}
 
@@ -445,15 +620,33 @@ LenExpr::~LenExpr() {
     delete expression;
 }
 
-void LenExpr::print() const {}
-ValueDescriptor *LenExpr::evaluate(const SymbolTable &symbolTable) const {
-    /*
-    tring → value().size(); 
-    list → object()->size(); 
-    otherwise type error → IntegerValueDescriptor*/
+void LenExpr::print() const {
+    cout << "len(";
+    expression->print();
+    cout << ")";
 }
 
-// Phase 4: split(s): returns a new string-category list
+// Phase 4 statement, "Length": "len(expression) accepts a string or a list and returns an
+//   integer. For a string, the result is the number of characters. Source strings and test
+//   data for this project use ASCII, so one stored byte represents one character."
+ValueDescriptor *LenExpr::evaluate(const SymbolTable &symbolTable) const {
+    ValueDescriptor *value = expression->evaluate(symbolTable);
+    if (value->type() == ValueDescriptor::Type::string) {
+        std::size_t length = static_cast<StringValueDescriptor *>(value)->value().size();
+        delete value;
+        return new IntegerValueDescriptor(static_cast<std::int64_t>(length));
+    } else if (value->type() == ValueDescriptor::Type::list) {
+        std::size_t length = static_cast<ListValueDescriptor *>(value)->object()->size();
+        delete value;
+        return new IntegerValueDescriptor(static_cast<std::int64_t>(length));
+    } else {
+        std::string typeName = value->typeName();
+        delete value;
+        throw std::runtime_error("len: argument must be string or list, got " + typeName);
+    }
+}
+
+// Phase 4: split(s)
 SplitExpr::SplitExpr(Token token, ExprNode *operand)
 : ExprNode(std::move(token)), expression{operand} {}
 
@@ -461,15 +654,61 @@ SplitExpr::~SplitExpr() {
     delete expression;
 }
 
-void SplitExpr::print() const {}
-ValueDescriptor *SplitExpr::evaluate(const SymbolTable &symbolTable) const {
-    /*must be a string → new ListValueDescriptor(new ListObject(ListElementType::string)),
-     then append(new StringValueDescriptor(word))
-     for each whitespace-separated word. 
-     If an append throws, delete the list.*/
+void SplitExpr::print() const {
+    cout << "split(";
+    expression->print();
+    cout << ")";
 }
 
-// Phase 4: pop(list): removes the last element and transfers it to the caller
+// Phase 4 statement, "Splitting a String": "split(expression) requires a string and returns a
+//   list of strings. It splits the string at runs of spaces or horizontal tab characters.
+//     Leading and trailing separators are discarded.
+//     Consecutive separators behave as one separator.
+//     No empty fields are produced.
+//     An empty or whitespace-only string produces an empty list."
+ValueDescriptor *SplitExpr::evaluate(const SymbolTable &symbolTable) const {
+    ValueDescriptor *value = expression->evaluate(symbolTable);
+
+    if (value->type() != ValueDescriptor::Type::string) {
+        std::string typeName = value->typeName();
+        delete value;
+        throw std::runtime_error("type error at line " + std::to_string(token().lineNumber()) +
+                                 ", column " + std::to_string(token().columnNumber()) +
+                                 ": split() cannot be applied to " + typeName);
+    }
+
+    // Copy (not a reference): value is deleted on the next line.
+    std::string text = static_cast<StringValueDescriptor *>(value)->value();
+    delete value;
+
+    // "The returned list has the string element category even when it is empty. Therefore,
+    // appending a numeric or Boolean value to the result of split is a runtime type error."
+    ListValueDescriptor *listValue = new ListValueDescriptor(new ListObject(ListElementType::string));
+
+    try {
+        std::string word;
+        for (char c : text) {
+            if (c == ' ' || c == '\t') {
+                // "Consecutive separators behave as one separator." / "No empty fields are produced."
+                if (!word.empty()) {
+                    listValue->object()->append(new StringValueDescriptor(word));
+                    word.clear();
+                }
+            } else {
+                word += c;
+            }
+        }
+        // The last field has no separator after it ("trailing separators are discarded").
+        if (!word.empty())
+            listValue->object()->append(new StringValueDescriptor(word));
+    } catch (...) {
+        delete listValue;     // the list object owns, and deletes, the words already appended
+        throw;
+    }
+    return listValue;
+}
+
+// Phase 4: pop(list)
 PopExpr::PopExpr(Token token, ExprNode *operand)
 : ExprNode(std::move(token)), expression{operand} {}
 
@@ -483,13 +722,16 @@ void PopExpr::print() const {
     expression->print();
     std::cout << ")";
 }
+// Phase 4 statement, "Appending and Popping": "pop(list) is a built-in expression. It removes
+//   and returns the final element ... Popping an empty list is a runtime error. Removing the
+//   final element does not erase the list's established element category."
+// Ownership guide, "Popping": "pop removes the pointer from the vector and returns it.
+//   Ownership transfers from the list object to the caller of pop. The descriptor must not be
+//   cloned and the removed pointer must not be deleted by the list."
 ValueDescriptor *PopExpr::evaluate(const SymbolTable &symbolTable) const {
-    /* must be a list → result = handle->object()->pop(),
-     delete the handle, 
-     return result (the caller now owns it).
-      If the list is empty, 
-      pop throws, 
-      so delete the handle before rethrowing.*/
+    // Evaluating the argument gives a new descriptor for the same shared list object
+    // (Phase 4 statement: "For a list, clone() creates another descriptor for the same
+    // shared object."), so popping through it is visible through every alias.
     ValueDescriptor *value = expression->evaluate(symbolTable);
 
     if (value->type() != ValueDescriptor::Type::list) {
@@ -516,8 +758,10 @@ ValueDescriptor *PopExpr::evaluate(const SymbolTable &symbolTable) const {
     }
 }
 
-// Phase 4: subscript expression
-// token = the '['
+// Phase 4: subscript expression (token = the '[')
+// Grammar: <postfix-expression> → <atom> [ [ <rel-expr> ] ]
+//   "The optional subscript in <postfix-expression> permits one indexing operation.
+//   Chained subscripts are not part of Phase 4."
 SubscriptExpr::SubscriptExpr(Token token, ExprNode *target, ExprNode *index)
 : ExprNode(std::move(token)), targetExpr{target}, indexExpr{index} {}
 
@@ -536,19 +780,15 @@ void SubscriptExpr::print() const {
 }
 
 
+// Phase 4 statement, "String Subscripting": "The result is a new one-character string. The
+//   index must satisfy: 0 <= index < len(string). A non-integer or out-of-range index is a
+//   runtime error. Negative indexes are not supported."
+// Phase 4 statement, "List Subscripting": "The result is a newly allocated descriptor
+//   representing the selected value. The list continues to own the descriptor stored in its vector."
+// Ownership guide, "Reading an Element": "The subscript operation returns elements[i]->clone().
+//   The caller owns the clone. Returning the stored pointer directly would give two owners the
+//   same pointer and eventually cause a double deletion."
 ValueDescriptor *SubscriptExpr::evaluate(const SymbolTable &symbolTable) const {
-    /*
-    target = targetExpr->evaluate          (evaluate the target first)
-    index  = nullptr
-    try:
-        index = indexExpr->evaluate
-        i = requireIndex(index, "subscript")
-        if target is a list   → result = object()->cloneElementAt(i)   (it does its own range check)
-        if target is a string → range-check i against size → new StringValueDescriptor(string(1, s[i]))
-        else                  → type error "cannot subscript <type>"
-    catch(...): delete target; delete index; throw;
-    delete target; delete index; return result
-    */
     ValueDescriptor *target = targetExpr->evaluate(symbolTable);
     ValueDescriptor *index = nullptr;
 
@@ -592,6 +832,9 @@ ValueDescriptor *SubscriptExpr::evaluate(const SymbolTable &symbolTable) const {
 }
 
 // Phase 4: input()
+// Grammar: <input-expression> → "input" ( )
+//   Phase 4 statement, "input()": "This phase supports only the zero-argument form ...
+//   Supplying an argument is a syntax error." The parser therefore always passes nullptr.
 InputExpr::InputExpr(Token token, ExprNode *prompt)
 : ExprNode(std::move(token)), promptExpr{prompt} {}  // prompt may be nullptr
 
@@ -603,9 +846,13 @@ void InputExpr::print() const {
     std::cout << "input()";
 }
 
+// Phase 4 statement, "input()": "When your interpreter evaluates input(), it reads one complete
+//   line from standard input and returns a string descriptor. The line terminator is not part
+//   of the returned string. Other characters, including leading and trailing spaces, are
+//   preserved." "input() always returns a string. It does not infer a datatype from the text
+//   that it reads." "Reaching the end of standard input when input() attempts to read another
+//   line is a runtime error."
 ValueDescriptor *InputExpr::evaluate(const SymbolTable &symbolTable) const {
-    /*evaluate: if prompt → evaluate it, print toString() with no newline, delete it
-          std::getline(std::cin, line) → return new StringValueDescriptor(line)*/
     (void)symbolTable;
 
     std::string line;

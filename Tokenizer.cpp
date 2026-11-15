@@ -421,7 +421,8 @@ Token Tokenizer::getToken() {
                   character == '%' || character == ';' ||
                   character == '(' || character == ')' ||
                   character == '{' || character == '}' ||
-                  character == ':' || character == ',' ){
+                  character == ':' || character == ',' ||
+                  character == '[' || character == ']' ){
 
            token.setSymbol(character);
             // Phase 3: Recognize integer floor division //
@@ -451,6 +452,31 @@ Token Tokenizer::getToken() {
                token.setKeyword(Keyword::falseKeyword);
            else if (identifier == "str")
                token.setKeyword(Keyword::strKeyword);
+               // Phase 4: Conditional and while keywords
+           else if (identifier == "if")
+               token.setKeyword(Keyword::ifKeyword);
+           else if (identifier == "elif")
+               token.setKeyword(Keyword::elifKeyword);
+           else if (identifier == "else")
+               token.setKeyword(Keyword::elseKeyword);
+           else if (identifier == "while")
+               token.setKeyword(Keyword::whileKeyword);
+                // Phase 4: Input and conversion keywords
+           else if (identifier == "input")
+               token.setKeyword(Keyword::inputKeyword);
+           else if (identifier == "int")
+               token.setKeyword(Keyword::intKeyword);
+           else if (identifier == "float")
+               token.setKeyword(Keyword::floatKeyword);
+            // Phase 4: String and list operation keywords
+           else if (identifier == "len")
+               token.setKeyword(Keyword::lenKeyword);
+           else if (identifier == "split")
+               token.setKeyword(Keyword::splitKeyword);
+           else if (identifier == "append")
+               token.setKeyword(Keyword::appendKeyword);
+           else if (identifier == "pop")
+               token.setKeyword(Keyword::popKeyword);
            else
                token.setIdentifier(std::move(identifier));
        } else {

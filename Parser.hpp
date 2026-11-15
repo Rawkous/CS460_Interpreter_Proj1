@@ -22,6 +22,9 @@ public:
     // Added: derived function declarations for print-statement and for-statement
     PrintStatement *printStatement();
     ForStatement *forStatement();
+    // Phase 4: conditional and while statements
+    IfStatement *ifStatement();
+    WhileStatement *whileStatement();
     /*
     Phase 2: 
     <for-statement> -> "for" <id> "in" <range> ":" <suite>

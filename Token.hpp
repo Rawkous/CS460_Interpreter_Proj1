@@ -15,7 +15,21 @@ enum class Keyword {
     rangeKeyword,
     trueKeyword,
     falseKeyword,
-    strKeyword
+    strKeyword,
+    // Phase 4: control flow
+    ifKeyword,
+    elifKeyword,
+    elseKeyword,
+    whileKeyword,
+    // Phase 4: input and conversions
+    inputKeyword,
+    intKeyword,
+    floatKeyword,
+    // Phase 4: string and list operations
+    lenKeyword,
+    splitKeyword,
+    appendKeyword,
+    popKeyword
 };
 
 class Token {
@@ -73,6 +87,10 @@ public:
     [[nodiscard]] bool isOpenBrace() const { return _symbol == '{'; }
     [[nodiscard]] bool isCloseBrace() const { return _symbol == '}'; }
 
+    // Phase 4: list literals and subscripting
+    [[nodiscard]] bool isOpenBracket() const { return _symbol == '['; }
+    [[nodiscard]] bool isCloseBracket() const { return _symbol == ']'; }
+
     [[nodiscard]] bool isColon() const {return _symbol == ':';}
     [[nodiscard]] bool isComma() const {return _symbol == ',';}
 
@@ -93,24 +111,27 @@ public:
     [[nodiscard]] bool isFalseKeyword() const {return _keyword == Keyword::falseKeyword;}
     [[nodiscard]] bool isStrKeyword() const {return _keyword == Keyword::strKeyword;}
 
-    void setIntegerValue(std::int64_t value) {
-        _integerValue = value;
-        _isInteger = true;
-    }
+    // Phase 4: control-flow keywords
+    [[nodiscard]] bool isIfKeyword() const {return _keyword == Keyword::ifKeyword;}
+    [[nodiscard]] bool isElifKeyword() const {return _keyword == Keyword::elifKeyword;}
+    [[nodiscard]] bool isElseKeyword() const {return _keyword == Keyword::elseKeyword;}
+    [[nodiscard]] bool isWhileKeyword() const {return _keyword == Keyword::whileKeyword;}
+// Phase 4: input and conversion keywords
+    [[nodiscard]] bool isInputKeyword() const {return _keyword == Keyword::inputKeyword;}
+    [[nodiscard]] bool isIntKeyword() const {return _keyword == Keyword::intKeyword;}
+    [[nodiscard]] bool isFloatKeyword() const {return _keyword == Keyword::floatKeyword;}
+// Phase 4: string and list operations
+    [[nodiscard]] bool isLenKeyword() const {return _keyword == Keyword::lenKeyword;}
+    [[nodiscard]] bool isSplitKeyword() const {return _keyword == Keyword::splitKeyword;}
+    [[nodiscard]] bool isAppendKeyword() const {return _keyword == Keyword::appendKeyword;}
+    [[nodiscard]] bool isPopKeyword() const {return _keyword == Keyword::popKeyword;}
+    void setIntegerValue(std::int64_t value) {_integerValue = value; _isInteger = true;}
     [[nodiscard]] bool isInteger() const { return _isInteger; }
     [[nodiscard]] std::int64_t integerValue() const { return _integerValue; }
-
-    void setDoubleValue(double value) {
-        _doubleValue = value;
-        _isDouble = true;
-    }
+    void setDoubleValue(double value) {_doubleValue = value;_isDouble = true;}
     [[nodiscard]] bool isDouble() const {return _isDouble;}
     [[nodiscard]] double doubleValue() const {return _doubleValue;}
-
-    void setStringValue(std::string value) {
-        _stringValue = std::move(value);
-        _isString = true;
-    }
+    void setStringValue(std::string value) {_stringValue = std::move(value); _isString = true;}
     [[nodiscard]] bool isString() const {return _isString;}
     [[nodiscard]] const std::string &stringValue() const {return _stringValue;}
 

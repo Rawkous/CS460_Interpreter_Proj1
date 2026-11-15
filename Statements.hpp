@@ -77,4 +77,40 @@ private:
     Statements *bodyStmts;
 };
 
+// Phase 4: if / elif / else
+class IfStatement final : public Statement {
+public:
+    IfStatement() = default;
+    ~IfStatement() override;
+
+    void addBranch(ExprNode *condition, Statements *body);
+    void setElseBranch(Statements *body);
+
+    void evaluate(SymbolTable &symbolTable) const override;
+    void print() const override;
+
+private:
+    struct Branch {
+        ExprNode *condition;
+        Statements *body;
+    };
+
+    std::vector<Branch> branches;
+    Statements *elseBody = nullptr;
+};
+
+// Phase 4: while loops
+class WhileStatement final : public Statement {
+public:
+    WhileStatement(ExprNode *condition, Statements *body);
+    ~WhileStatement() override;
+
+    void evaluate(SymbolTable &symbolTable) const override;
+    void print() const override;
+
+private:
+    ExprNode *condition;
+    Statements *body;
+};
+
 #endif // EXPRINTER_STATEMENTS_HPP

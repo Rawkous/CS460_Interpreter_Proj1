@@ -37,7 +37,8 @@ Statements *Parser::statements() {
    parsedStatements->addStatement(statement());
 
    Token next = tokenizer.getToken();
-   while (next.isIdentifier() || next.isForKeyword() || next.isPrintKeyword()) {
+   while (next.isIdentifier() || next.isForKeyword() || next.isPrintKeyword() || next.isIfKeyword()
+   || next.isWhileKeyword()) {
        tokenizer.ungetToken();
 
        parsedStatements->addStatement(statement());
@@ -59,7 +60,18 @@ Statement *Parser::statement() {
    if (token.isForKeyword()) {
        tokenizer.ungetToken();
        return forStatement();
-   }  
+   }
+    // Phase 4: if / elif / else
+    if (token.isIfKeyword()) {
+        tokenizer.ungetToken();
+        return ifStatement();
+    }
+
+    // Phase 4: while
+    if (token.isWhileKeyword()) {
+        tokenizer.ungetToken();
+        return whileStatement();
+    }
    // Simple: assignment-statement
    if (token.isIdentifier()) {
        tokenizer.ungetToken();
@@ -85,7 +97,7 @@ Statement *Parser::statement() {
        return stmt;
    }
    
-   die("Parser::statement", "expected assignment, print, or for statement", token);
+   die("Parser::statement", "expected assignment, print, for, if, or while statement", token);
 }
 
 
@@ -145,6 +157,98 @@ ForStatement *Parser::forStatement() {
    return new ForStatement(variable.identifier(), rangeExpr, bodyStmts);
 }
 
+// Phase 4: while statement
+WhileStatement *Parser::whileStatement() {
+    // <while-statement> -> "while" <rel-expr> ":" <suite>
+
+    Token whileKeyword = tokenizer.getToken();
+
+    if (!whileKeyword.isWhileKeyword()) {
+        die("Parser::whileStatement",
+            "expected 'while' keyword", whileKeyword);
+    }
+
+    ExprNode *condition = relExpr();
+
+    Token colon = tokenizer.getToken();
+
+    if (!colon.isColon()) {
+        delete condition;
+        die("Parser::whileStatement",
+            "expected ':'", colon);
+    }
+
+    Statements *body = suite();
+
+    return new WhileStatement(condition, body);
+}
+
+// Phase 4: if / elif / else statement
+IfStatement *Parser::ifStatement() {
+    // <if-statement> ->
+    // "if" <rel-expr> ":" <suite>
+    // { "elif" <rel-expr> ":" <suite> }
+    // [ "else" ":" <suite> ]
+
+    Token ifKeyword = tokenizer.getToken();
+
+    if (!ifKeyword.isIfKeyword()) {
+        die("Parser::ifStatement",
+            "expected 'if' keyword", ifKeyword);
+    }
+
+    auto *ifStmt = new IfStatement();
+
+    ExprNode *condition = relExpr();
+
+    Token colon = tokenizer.getToken();
+
+    if (!colon.isColon()) {
+        delete condition;
+        delete ifStmt;
+        die("Parser::ifStatement", "expected ':'", colon);
+    }
+
+    Statements *body = suite();
+    ifStmt->addBranch(condition, body);
+
+    Token next = tokenizer.getToken();
+
+    while (next.isElifKeyword()) {
+        ExprNode *elifCondition = relExpr();
+
+        Token elifColon = tokenizer.getToken();
+
+        if (!elifColon.isColon()) {
+            delete elifCondition;
+            delete ifStmt;
+            die("Parser::ifStatement",
+                "expected ':' after elif condition", elifColon);
+        }
+
+        Statements *elifBody = suite();
+        ifStmt->addBranch(elifCondition, elifBody);
+
+        next = tokenizer.getToken();
+    }
+
+    if (next.isElseKeyword()) {
+        Token elseColon = tokenizer.getToken();
+
+        if (!elseColon.isColon()) {
+            delete ifStmt;
+            die("Parser::ifStatement",
+                "expected ':' after else", elseColon);
+        }
+
+        Statements *elseBody = suite();
+        ifStmt->setElseBranch(elseBody);
+    } else {
+        tokenizer.ungetToken();
+    }
+
+    return ifStmt;
+}
 
 Statements *Parser::suite() {
     //<suite> -> NEWLINE INDENT <statements> DEDENT

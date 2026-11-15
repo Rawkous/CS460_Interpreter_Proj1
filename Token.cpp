@@ -26,11 +26,40 @@ void Token::print(std::ostream &output) const {
         output << "False";
     else if (isStrKeyword())
         output << "str";
+    // Phase 4: conditional and while keywords
+    else if (isIfKeyword())
+        output << "if";
+    else if (isElifKeyword())
+        output << "elif";
+    else if (isElseKeyword())
+        output << "else";
+    else if (isWhileKeyword())
+        output << "while";
+// Phase 4: input and conversion keywords
+    else if (isInputKeyword())
+        output << "input";
+    else if (isIntKeyword())
+        output << "int";
+    else if (isFloatKeyword())
+        output << "float";
+// Phase 4: string and list operation keywords
+    else if (isLenKeyword())
+        output << "len";
+    else if (isSplitKeyword())
+        output << "split";
+    else if (isAppendKeyword())
+        output << "append";
+    else if (isPopKeyword())
+        output << "pop";
     else if (isOpenParen())
         output << '(';
     else if (isCloseParen())
         output << ')';
-        // added openbrace, closebrace, and equality and relational operator checks
+    // Phase 4: list brackets
+    else if (isOpenBracket())
+        output << '[';
+    else if (isCloseBracket())
+        output << ']';
     else if (isOpenBrace())
         output << '{';
     else if (isCloseBrace())

@@ -1,6 +1,7 @@
 #include <iostream>
 #include <string>
 #include <utility>
+#include <stdexcept>
 
 #include "Statements.hpp"
 
@@ -94,7 +95,7 @@ ForStatement::~ForStatement() {
     delete bodyStmts;
 }
 
-// Evaluate the for statement 
+// Evaluate the for statement
 void ForStatement::evaluate(SymbolTable & symbolTable) const {
    
     // Range expression
@@ -128,12 +129,138 @@ void ForStatement::print() const {
     rangeExpr->print(std::cout);
     std::cout << ":\n";
 
-    // for deeper indentation, increment level
     ++printIndentLevel;
 
-    // Print loop body one level deeper
     bodyStmts->print();
 
-    // Decrement indentation level after printing body
+    --printIndentLevel;
+}
+
+// Phase 4: IfStatement
+IfStatement::~IfStatement() {
+    for (const auto &branch : branches) {
+        delete branch.condition;
+        delete branch.body;
+    }
+
+    delete elseBody;
+}
+
+void IfStatement::addBranch(ExprNode *condition, Statements *body) {
+    branches.push_back({condition, body});
+}
+
+void IfStatement::setElseBranch(Statements *body) {
+    elseBody = body;
+}
+
+// Phase 4: Evaluate if / elif / else
+void IfStatement::evaluate(SymbolTable &symbolTable) const {
+    for (const auto &branch : branches) {
+        ValueDescriptor *value =
+                branch.condition->evaluate(symbolTable);
+
+        if (value->type() != ValueDescriptor::Type::boolean) {
+            std::string typeName = value->typeName();
+            delete value;
+
+            throw std::runtime_error(
+                    "if/elif condition must be boolean, got " + typeName
+            );
+        }
+
+        bool conditionIsTrue =
+                static_cast<BooleanValueDescriptor *>(value)->value();
+
+        delete value;
+
+        if (conditionIsTrue) {
+            branch.body->evaluate(symbolTable);
+            return;
+        }
+    }
+
+    if (elseBody != nullptr) {
+        elseBody->evaluate(symbolTable);
+    }
+}
+
+// Phase 4: Print if / elif / else statement
+void IfStatement::print() const {
+    for (std::size_t i = 0; i < branches.size(); ++i) {
+        // The first branch is if; the rest are elif
+        if (i == 0) {
+            std::cout << "if ";
+        } else {
+            for (int level = 0; level < printIndentLevel; ++level) {
+                std::cout << "   ";
+            }
+            std::cout << "elif ";
+        }
+
+        branches[i].condition->print();
+        std::cout << ":\n";
+
+        ++printIndentLevel;
+        branches[i].body->print();
+        --printIndentLevel;
+    }
+
+    // Print the optional else suite
+    if (elseBody != nullptr) {
+        for (int level = 0; level < printIndentLevel; ++level) {
+            std::cout << "   ";
+        }
+
+        std::cout << "else:\n";
+
+        ++printIndentLevel;
+        elseBody->print();
+        --printIndentLevel;
+    }
+}
+
+// Phase 4: WhileStatement
+WhileStatement::WhileStatement(ExprNode *condition, Statements *body)
+        : condition{condition}, body{body} {}
+
+WhileStatement::~WhileStatement() {
+    delete condition;
+    delete body;
+}
+
+// Phase 4: Evaluate while loop
+void WhileStatement::evaluate(SymbolTable &symbolTable) const {
+    while (true) {
+        ValueDescriptor *value = condition->evaluate(symbolTable);
+
+        if (value->type() != ValueDescriptor::Type::boolean) {
+            std::string typeName = value->typeName();
+            delete value;
+
+            throw std::runtime_error("while condition must be boolean, got " + typeName);
+        }
+
+        bool conditionIsTrue =
+                static_cast<BooleanValueDescriptor *>(value)->value();
+
+        delete value;
+
+        if (!conditionIsTrue) {
+            break;
+        }
+
+        body->evaluate(symbolTable);
+    }
+}
+
+// Phase 4: Print while statement
+void WhileStatement::print() const {
+    std::cout << "while ";
+    condition->print();
+    std::cout << ":\n";
+
+    ++printIndentLevel;
+    body->print();
     --printIndentLevel;
 }

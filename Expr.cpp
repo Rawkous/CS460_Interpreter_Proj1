@@ -3,8 +3,6 @@
 #include <string>
 #include <utility>
 #include <cstdint>
-#include <stdexcept>
-#include <iostream>
 
 #include "Expr.hpp"
 #include "ListObject.hpp"
@@ -480,7 +478,11 @@ PopExpr::~PopExpr() {
 }
 
 
-void PopExpr::print() const {}
+void PopExpr::print() const {
+    std::cout << "pop(";
+    expression->print();
+    std::cout << ")";
+}
 ValueDescriptor *PopExpr::evaluate(const SymbolTable &symbolTable) const {
     /* must be a list → result = handle->object()->pop(),
      delete the handle, 
@@ -488,6 +490,30 @@ ValueDescriptor *PopExpr::evaluate(const SymbolTable &symbolTable) const {
       If the list is empty, 
       pop throws, 
       so delete the handle before rethrowing.*/
+    ValueDescriptor *value = expression->evaluate(symbolTable);
+
+    if (value->type() != ValueDescriptor::Type::list) {
+        std::string typeName = value->typeName();
+        delete value;
+
+        throw std::runtime_error(
+                "pop: expected list, got " + typeName
+        );
+    }
+
+    try {
+        auto *list =
+                static_cast<ListValueDescriptor *>(value);
+
+        ValueDescriptor *result = list->object()->pop();
+
+        delete value;
+        return result;
+
+    } catch (...) {
+        delete value;
+        throw;
+    }
 }
 
 // Phase 4: subscript expression
@@ -495,12 +521,21 @@ ValueDescriptor *PopExpr::evaluate(const SymbolTable &symbolTable) const {
 SubscriptExpr::SubscriptExpr(Token token, ExprNode *target, ExprNode *index)
 : ExprNode(std::move(token)), targetExpr{target}, indexExpr{index} {}
 
+
 SubscriptExpr::~SubscriptExpr() {
     delete targetExpr;
     delete indexExpr;
 }                                    
 
-void SubscriptExpr::print() const {}    
+
+void SubscriptExpr::print() const {
+    targetExpr->print();
+    std::cout << '[';
+    indexExpr->print();
+    std::cout << ']';
+}
+
+
 ValueDescriptor *SubscriptExpr::evaluate(const SymbolTable &symbolTable) const {
     /*
     target = targetExpr->evaluate          (evaluate the target first)
@@ -514,10 +549,49 @@ ValueDescriptor *SubscriptExpr::evaluate(const SymbolTable &symbolTable) const {
     catch(...): delete target; delete index; throw;
     delete target; delete index; return result
     */
+    ValueDescriptor *target = targetExpr->evaluate(symbolTable);
+    ValueDescriptor *index = nullptr;
+
+    try {
+        index = indexExpr->evaluate(symbolTable);
+
+        std::size_t i = requireIndex(index, "subscript");
+
+        ValueDescriptor *result = nullptr;
+
+        if (target->type() == ValueDescriptor::Type::list) {
+            auto *list = static_cast<ListValueDescriptor *>(target);
+
+            result = list->object()->cloneElementAt(i);
+        }
+        else if (target->type() == ValueDescriptor::Type::string) {
+            auto *str = static_cast<StringValueDescriptor *>(target);
+
+            const std::string &text = str->value();
+
+            if (i >= text.size()) {
+                throw std::out_of_range("string subscript: index " + std::to_string(i) + " out of range");
+            }
+
+            result = new StringValueDescriptor(std::string(1, text[i]));
+        }
+        else {
+            throw std::runtime_error("subscript: cannot subscript " + target->typeName());
+        }
+
+        delete target;
+        delete index;
+
+        return result;
+
+    } catch (...) {
+        delete target;
+        delete index;
+        throw;
+    }
 }
 
-// Phase 4: input() or input(prompt)
-
+// Phase 4: input()
 InputExpr::InputExpr(Token token, ExprNode *prompt)
 : ExprNode(std::move(token)), promptExpr{prompt} {}  // prompt may be nullptr
 
@@ -525,9 +599,21 @@ InputExpr::~InputExpr() {
     delete promptExpr;
 }                     
 
-void InputExpr::print() const {}
+void InputExpr::print() const {
+    std::cout << "input()";
+}
+
 ValueDescriptor *InputExpr::evaluate(const SymbolTable &symbolTable) const {
     /*evaluate: if prompt → evaluate it, print toString() with no newline, delete it
           std::getline(std::cin, line) → return new StringValueDescriptor(line)*/
+    (void)symbolTable;
+
+    std::string line;
+
+    if (!std::getline(std::cin, line)) {
+        throw std::runtime_error("input: end of input reached");
+    }
+
+    return new StringValueDescriptor(line);
     
 }

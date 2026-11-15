@@ -282,8 +282,7 @@ IndexAssignmentStatement::~IndexAssignmentStatement() {
     delete valueExpr;
 }
 
-void IndexAssignmentStatement::evaluate(
-        SymbolTable &symbolTable) const {
+void IndexAssignmentStatement::evaluate(SymbolTable &symbolTable) const {
 
     const ValueDescriptor *target = symbolTable.getValueFor(variableName);
 
@@ -348,8 +347,7 @@ AppendStatement::~AppendStatement() {
     delete valueExpr;
 }
 
-void AppendStatement::evaluate(
-        SymbolTable &symbolTable) const {
+void AppendStatement::evaluate(SymbolTable &symbolTable) const {
 
     ValueDescriptor *target = targetExpr->evaluate(symbolTable);
 

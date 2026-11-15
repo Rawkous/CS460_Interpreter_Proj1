@@ -2,9 +2,7 @@
 #include <stdexcept>
 #include <string>
 #include <utility>
-#include <cstdint>
-#include <stdexcept>
-#include <iostream>
+#include <cmath>
 
 #include "Expr.hpp"
 #include "ListObject.hpp"
@@ -172,13 +170,30 @@ namespace {
             // Ownership guide, "Reading an Element": "The list retains ownership of the stored
             // descriptor. ... The caller owns the clone." Each clone is deleted after comparing.
             for (std::size_t i = 0; same && i < leftList->size(); ++i) {
-                ValueDescriptor *leftElement = leftList->cloneElementAt(i);
-                ValueDescriptor *rightElement = rightList->cloneElementAt(i);
-                ValueDescriptor *result = equals(*leftElement, *rightElement, false);
-                bool elementsEqual = isBool(*result);
+                ValueDescriptor *leftElement = nullptr;
+                ValueDescriptor *rightElement = nullptr;
+                ValueDescriptor *result = nullptr;
+
+                bool elementsEqual = false;
+
+                try {
+                    leftElement = leftList->cloneElementAt(i);
+                    rightElement = rightList->cloneElementAt(i);
+
+                    result = equals(*leftElement, *rightElement, false);
+                    elementsEqual = isBool(*result);
+
+                } catch (...) {
+                    delete leftElement;
+                    delete rightElement;
+                    delete result;
+                    throw;
+                }
+
                 delete leftElement;
                 delete rightElement;
                 delete result;
+
                 if (!elementsEqual) {
                     same = false;
                     break;
@@ -429,16 +444,24 @@ void ListLiteral::print() const {
 ValueDescriptor *ListLiteral::evaluate(const SymbolTable &symbolTable) const {
     ListValueDescriptor *listValue = new ListValueDescriptor(new ListObject());
 
-    for (ExprNode *elementExpr : elementExprs) {
-        ValueDescriptor *elementValue = nullptr;
-        try {
-            elementValue = elementExpr->evaluate(symbolTable);
-            listValue->object()->append(elementValue);
-        } catch (...) {
-            delete elementValue;
-            delete listValue;
-            throw;
+    try {
+        for (ExprNode *elementExpr : elementExprs) {
+            ValueDescriptor *elementValue = nullptr;
+
+            try {
+                elementValue = elementExpr->evaluate(symbolTable);
+                listValue->object()->append(elementValue);
+
+            } catch (...) {
+                delete elementValue;
+                throw;
+            }
         }
+    }
+    catch (...) {
+        // Deletes the list and all successfully appended elements.
+        delete listValue;
+        throw;
     }
     return listValue;
 }
@@ -557,6 +580,11 @@ ValueDescriptor *FloatConversion::evaluate(const SymbolTable &symbolTable) const
     if (value->type() == ValueDescriptor::Type::doubleValue) {
         double d = static_cast<DoubleValueDescriptor *>(value)->value();
         delete value;
+
+        if (!std::isfinite(d)) {
+            throw std::runtime_error(where + "float() result must be finite");
+        }
+
         return new DoubleValueDescriptor(d);
     }
 
@@ -606,8 +634,17 @@ ValueDescriptor *FloatConversion::evaluate(const SymbolTable &symbolTable) const
 
     // "The result must be a finite value representable by double." (stod throws out_of_range)
     try {
-        return new DoubleValueDescriptor(std::stod(text));
-    } catch (const std::out_of_range &) {
+        double result = std::stod(text);
+
+        if (!std::isfinite(result)) {
+            throw std::runtime_error(
+                    where + "float() result must be finite"
+            );
+        }
+
+        return new DoubleValueDescriptor(result);
+    }
+    catch (const std::out_of_range &) {
         throw std::runtime_error(where + "float() value out of range: \"" + text + "\"");
     }
 }
@@ -687,11 +724,18 @@ ValueDescriptor *SplitExpr::evaluate(const SymbolTable &symbolTable) const {
 
     try {
         std::string word;
-        for (char c : text) {
+        for (char c: text) {
             if (c == ' ' || c == '\t') {
                 // "Consecutive separators behave as one separator." / "No empty fields are produced."
                 if (!word.empty()) {
-                    listValue->object()->append(new StringValueDescriptor(word));
+                    ValueDescriptor *element = new StringValueDescriptor(word);
+
+                    try {
+                        listValue->object()->append(element);
+                    } catch (...) {
+                        delete element;
+                        throw;
+                    }
                     word.clear();
                 }
             } else {
@@ -699,9 +743,17 @@ ValueDescriptor *SplitExpr::evaluate(const SymbolTable &symbolTable) const {
             }
         }
         // The last field has no separator after it ("trailing separators are discarded").
-        if (!word.empty())
-            listValue->object()->append(new StringValueDescriptor(word));
-    } catch (...) {
+        if (!word.empty()) {
+            ValueDescriptor *element = new StringValueDescriptor(word);
+
+        try {
+            listValue->object()->append(element);
+        } catch (...) {
+            delete element;
+            throw;
+        }
+    }
+} catch (...) {
         delete listValue;     // the list object owns, and deletes, the words already appended
         throw;
     }

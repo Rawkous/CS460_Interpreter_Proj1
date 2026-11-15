@@ -1,0 +1,6 @@
+if True:
+    print "first"
+elif 5 / 0 == 1:
+    print "wrong"
+else:
+    print "wrong"

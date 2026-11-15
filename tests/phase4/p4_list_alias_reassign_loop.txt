@@ -1,0 +1,6 @@
+a = [1]
+b = a
+for i in range(10):
+    b = [i]
+print a
+print b

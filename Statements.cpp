@@ -2,8 +2,11 @@
 #include <string>
 #include <utility>
 #include <stdexcept>
+#include <cstdint>
 
 #include "Statements.hpp"
+#include "ListObject.hpp"
+
 
 namespace {
     int printIndentLevel = 0;
@@ -263,4 +266,125 @@ void WhileStatement::print() const {
     ++printIndentLevel;
     body->print();
     --printIndentLevel;
+}
+
+// Phase 4: Indexed assignment
+IndexAssignmentStatement::IndexAssignmentStatement(
+        std::string variableName,
+        ExprNode *index,
+        ExprNode *value)
+        : variableName{std::move(variableName)},
+          indexExpr{index},
+          valueExpr{value} {}
+
+IndexAssignmentStatement::~IndexAssignmentStatement() {
+    delete indexExpr;
+    delete valueExpr;
+}
+
+void IndexAssignmentStatement::evaluate(
+        SymbolTable &symbolTable) const {
+
+    const ValueDescriptor *target = symbolTable.getValueFor(variableName);
+
+    if (target->type() != ValueDescriptor::Type::list) {
+        throw std::runtime_error("list assignment: target must be a list, got " + target->typeName());
+    }
+
+    const auto *listDescriptor = static_cast<const ListValueDescriptor *>(target);
+
+    ListObject *list = const_cast<ListObject *>(listDescriptor->object()
+    );
+
+    ValueDescriptor *indexValue = indexExpr->evaluate(symbolTable);
+
+    if (indexValue->type() != ValueDescriptor::Type::integer) {
+        std::string typeName = indexValue->typeName();
+        delete indexValue;
+
+        throw std::runtime_error(
+                "list assignment: index must be integer, got " +
+                typeName
+        );
+    }
+
+    std::int64_t index = static_cast<IntegerValueDescriptor *>(indexValue)->value();
+
+    delete indexValue;
+
+    if (index < 0 || static_cast<std::uint64_t>(index) >= list->size()) {
+
+        throw std::out_of_range("list assignment: index " + std::to_string(index) + " out of range");
+    }
+
+    ValueDescriptor *newValue = valueExpr->evaluate(symbolTable);
+
+    try {
+        list->setElement(static_cast<std::size_t>(index),newValue);
+    } catch (...) {
+        delete newValue;
+        throw;
+    }
+
+}
+
+void IndexAssignmentStatement::print() const {
+    std::cout << variableName << '[';
+    indexExpr->print();
+    std::cout << "] = ";
+    valueExpr->print();
+    std::cout << '\n';
+}
+
+// Phase 4: Append statement
+AppendStatement::AppendStatement(
+        ExprNode *target,
+        ExprNode *value)
+        : targetExpr{target},
+          valueExpr{value} {}
+
+AppendStatement::~AppendStatement() {
+    delete targetExpr;
+    delete valueExpr;
+}
+
+void AppendStatement::evaluate(
+        SymbolTable &symbolTable) const {
+
+    ValueDescriptor *target = targetExpr->evaluate(symbolTable);
+
+    if (target->type() != ValueDescriptor::Type::list) {
+        std::string typeName = target->typeName();
+        delete target;
+
+        throw std::runtime_error(
+                "append: first argument must be list, got " +
+                typeName
+        );
+    }
+
+    auto *listDescriptor = static_cast<ListValueDescriptor *>(target);
+
+    ValueDescriptor *newValue = nullptr;
+
+    try {
+        newValue = valueExpr->evaluate(symbolTable);
+
+        listDescriptor->object()->append(newValue);
+
+    } catch (...) {
+        delete newValue;
+        delete target;
+        throw;
+    }
+
+    delete target;
+}
+
+void AppendStatement::print() const {
+    std::cout << "append(";
+    targetExpr->print();
+    std::cout << ", ";
+    valueExpr->print();
+    std::cout << ")\n";
 }

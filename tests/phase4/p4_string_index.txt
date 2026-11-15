@@ -1,0 +1,4 @@
+word = "parser"
+print word[0]
+print word[5]
+print word[1 + 2]

@@ -1,0 +1,5 @@
+print []
+print [1, 2, 3]
+print [1, 2.5, 3]
+print [True, False, True]
+print ["red", "green", "blue"]

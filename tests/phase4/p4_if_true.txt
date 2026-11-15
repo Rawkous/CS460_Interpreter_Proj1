@@ -1,0 +1,3 @@
+if True:
+    print "true branch"
+print "finished"

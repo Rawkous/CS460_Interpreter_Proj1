@@ -1,0 +1,3 @@
+values = split("")
+append(values, "hello")
+print values

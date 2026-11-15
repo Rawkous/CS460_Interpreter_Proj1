@@ -1,0 +1,5 @@
+fields = split("Mel   Aveo  22")
+print fields[0]
+print fields[1]
+print int(fields[2])
+print len(fields)

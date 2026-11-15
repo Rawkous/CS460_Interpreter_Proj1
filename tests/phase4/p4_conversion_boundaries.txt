@@ -1,0 +1,4 @@
+print int("9223372036854775807")
+print int("-9223372036854775808")
+print float("0.5")
+print float("+42.25")

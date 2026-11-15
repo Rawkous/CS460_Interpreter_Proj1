@@ -1,0 +1,5 @@
+values = []
+append(values, 10)
+print pop(values)
+append(values, 2.5)
+print values

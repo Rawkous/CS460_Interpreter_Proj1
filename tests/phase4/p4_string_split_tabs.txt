@@ -1,0 +1,6 @@
+line = input()
+fields = split(line)
+print len(fields)
+print fields[0]
+print fields[1]
+print fields[2]

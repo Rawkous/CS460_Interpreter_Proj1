@@ -1,0 +1,8 @@
+values = []
+append(values, 10)
+append(values, 2.5)
+append(values, 30)
+print values
+print pop(values)
+print values
+print len(values)

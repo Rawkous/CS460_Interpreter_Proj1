@@ -1,0 +1,6 @@
+a = [1]
+b = a
+append(b, 2)
+print len(a)
+print pop(a)
+print len(b)

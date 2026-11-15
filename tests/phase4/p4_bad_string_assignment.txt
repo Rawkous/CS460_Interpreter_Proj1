@@ -1,0 +1,2 @@
+word = "hello"
+word[0] = "H"

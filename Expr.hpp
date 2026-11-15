@@ -6,6 +6,13 @@
 #include "ValueDescriptor.hpp"
 #include "ListObject.hpp"
 #include <vector>
+#include <string>
+#include <cstddef>
+
+
+// Throws unless value is an integer >= 0. Does not take ownership.
+std::size_t requireIndex(const ValueDescriptor *value, const std::string &operation);
+
 
 class ExprNode {
 public:
@@ -117,4 +124,113 @@ private:
     std::vector<ExprNode *> elementExprs;
 };
 
+// Phase 4: one-argument calls. Each node owns its operand expression.
+// int(x)
+class IntConversion final : public ExprNode {
+public:
+    IntConversion(Token token, ExprNode *operand);
+    ~IntConversion() override;
+    IntConversion(const IntConversion &) = delete;
+    IntConversion &operator=(const IntConversion &) = delete;
+
+    void print() const override;
+    [[nodiscard]] ValueDescriptor *evaluate(const SymbolTable &symbolTable) const override;
+
+private:
+    ExprNode *expression;
+};
+
+//Phase 4: float(x)
+class FloatConversion final : public ExprNode {
+public:
+    FloatConversion(Token token, ExprNode *operand);
+    ~FloatConversion() override;
+    FloatConversion(const FloatConversion &) = delete;
+    FloatConversion &operator=(const FloatConversion &) = delete;
+
+    void print() const override;
+    [[nodiscard]] ValueDescriptor *evaluate(const SymbolTable &symbolTable) const override;
+
+private:
+    ExprNode *expression;
+};
+
+// Phase 4: len(x): x is a string or a list
+class LenExpr final : public ExprNode {
+public:
+    LenExpr(Token token, ExprNode *operand);
+    ~LenExpr() override;
+    LenExpr(const LenExpr &) = delete;
+    LenExpr &operator=(const LenExpr &) = delete;
+
+    void print() const override;
+    [[nodiscard]] ValueDescriptor *evaluate(const SymbolTable &symbolTable) const override;
+
+private:
+    ExprNode *expression;
+};
+
+// Phase 4: split(s): returns a new string-category list
+class SplitExpr final : public ExprNode {
+public:
+    SplitExpr(Token token, ExprNode *operand);
+    ~SplitExpr() override;
+    SplitExpr(const SplitExpr &) = delete;
+    SplitExpr &operator=(const SplitExpr &) = delete;
+
+    void print() const override;
+    [[nodiscard]] ValueDescriptor *evaluate(const SymbolTable &symbolTable) const override;
+
+private:
+    ExprNode *expression;
+};
+
+// Phase 4: pop(list): removes the last element and transfers it to the caller
+class PopExpr final : public ExprNode {
+public:
+    PopExpr(Token token, ExprNode *operand);
+    ~PopExpr() override;
+    PopExpr(const PopExpr &) = delete;
+    PopExpr &operator=(const PopExpr &) = delete;
+
+    void print() const override;
+    [[nodiscard]] ValueDescriptor *evaluate(const SymbolTable &symbolTable) const override;
+
+private:
+    ExprNode *expression;
+};
+
+// Phase 4: subscript expression
+class SubscriptExpr final : public ExprNode {
+public:
+    // token = the '['
+    SubscriptExpr(Token token, ExprNode *target, ExprNode *index);  
+    ~SubscriptExpr() override;                                    
+    SubscriptExpr(const SubscriptExpr &) = delete;
+    SubscriptExpr &operator=(const SubscriptExpr &) = delete;
+
+    void print() const override;    
+    [[nodiscard]] ValueDescriptor *evaluate(const SymbolTable &symbolTable) const override;
+
+private:
+    ExprNode *targetExpr;
+    ExprNode *indexExpr;
+};
+// Phase 4: input() or input(prompt)
+class InputExpr final : public ExprNode {
+public:
+    InputExpr(Token token, ExprNode *prompt);   // prompt may be nullptr
+    ~InputExpr() override;                      // delete prompt; (deleting nullptr is safe)
+    InputExpr(const InputExpr &) = delete;
+    InputExpr &operator=(const InputExpr &) = delete;
+
+    void print() const override;
+    [[nodiscard]] ValueDescriptor *evaluate(const SymbolTable &symbolTable) const override;
+
+private:
+    ExprNode *promptExpr;
+};
+
+
 #endif // EXPRINTER_EXPR_HPP
+

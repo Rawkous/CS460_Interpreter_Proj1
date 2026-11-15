@@ -18,7 +18,10 @@ public:
     Statements *statements();
     Statement *statement();
     Statements *suite(); // Phase 2: added suite() function declaration
-    AssignmentStatement *assignmentStatement();
+    // Phase 4: returns AssignmentStatement or IndexAssignmentStatement
+    Statement *assignmentStatement();
+    // Phase 4: append(<rel-expr>, <rel-expr>)
+    AppendStatement *appendStatement();
     // Added: derived function declarations for print-statement and for-statement
     PrintStatement *printStatement();
     ForStatement *forStatement();
@@ -45,7 +48,11 @@ public:
     ExprNode *arithExpr();
     ExprNode *arithTerm();
     ExprNode *arithPrimary();
+    // Phase 4: <atom> [ "[" <rel-expr> "]" ]
+    ExprNode *postfixExpression();
     ExprNode *arithAtom();
+    // Phase 4: int/float/str/len/split/pop "(" <rel-expr> ")"
+    ExprNode *oneArgumentCall(const Token &name);
 
 private:
     Tokenizer &tokenizer;

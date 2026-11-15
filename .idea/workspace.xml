@@ -16,6 +16,7 @@
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/Parser.cpp" beforeDir="false" afterPath="$PROJECT_DIR$/Parser.cpp" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/Parser.hpp" beforeDir="false" afterPath="$PROJECT_DIR$/Parser.hpp" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/Range.cpp" beforeDir="false" afterPath="$PROJECT_DIR$/Range.cpp" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/Statements.cpp" beforeDir="false" afterPath="$PROJECT_DIR$/Statements.cpp" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/Statements.hpp" beforeDir="false" afterPath="$PROJECT_DIR$/Statements.hpp" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/Token.cpp" beforeDir="false" afterPath="$PROJECT_DIR$/Token.cpp" afterDir="false" />
@@ -118,7 +119,7 @@
       <workItem from="1791917951726" duration="98000" />
       <workItem from="1792787119750" duration="18017000" />
       <workItem from="1793160223989" duration="2608000" />
-      <workItem from="1794682800488" duration="8041000" />
+      <workItem from="1794682800488" duration="8870000" />
     </task>
     <servers />
   </component>

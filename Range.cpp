@@ -84,7 +84,8 @@ EvaluatedRange RangeExpression::evaluate(const SymbolTable& symbolTable) const {
         if (value->type() != ValueDescriptor::Type::integer) {
             const std::string valueType = value->typeName();
             delete value;
-            throw std::runtime_error("range argument must be integer, got " + valueType
+            throw std::runtime_error(
+                    "range argument must be integer, got " + valueType
             );
         }
 

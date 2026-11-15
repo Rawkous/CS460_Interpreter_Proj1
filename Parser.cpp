@@ -1,6 +1,8 @@
 #include <cstdlib>
 #include <iostream>
 #include <string>
+#include <utility> 
+#include <vector>    
 
 
 #include "Parser.hpp"
@@ -37,8 +39,10 @@ Statements *Parser::statements() {
    parsedStatements->addStatement(statement());
 
    Token next = tokenizer.getToken();
+   // These are the tokens a statement can start with. elif and else are
+   // left out on purpose: they end the current suite and belong to ifStatement.
    while (next.isIdentifier() || next.isForKeyword() || next.isPrintKeyword() || next.isIfKeyword()
-   || next.isWhileKeyword()) {
+   || next.isWhileKeyword() || next.isAppendKeyword()) {
        tokenizer.ungetToken();
 
        parsedStatements->addStatement(statement());
@@ -96,26 +100,92 @@ Statement *Parser::statement() {
          }
        return stmt;
    }
-   
-   die("Parser::statement", "expected assignment, print, for, if, or while statement", token);
+   // Phase 4 simple statement: append-statement
+   if (token.isAppendKeyword()) {
+       tokenizer.ungetToken();
+
+       Statement *stmt = appendStatement();
+       Token newline = tokenizer.getToken();
+         if (!newline.isNewline()) {
+             delete stmt;
+             die("Parser::statement", "expected NEWLINE after append statement", newline);
+         }
+       return stmt;
+   }
+
+   die("Parser::statement", "expected assignment, print, append, for, if, or while statement", token);
 }
 
 
-AssignmentStatement *Parser::assignmentStatement() {
-   // <assignment-statement> -> <id> = <rel-expr>
-   // The caller consumes the context-dependent terminator: NEWLINE in a
-   // statement list or ';' in a future for-loop header.
+// Phase 4: <assignment-statement> -> <assignment-target> "=" <rel-expr>
+//          <assignment-target>    -> <id> [ "[" <rel-expr> "]" ]
+// Returns Statement* because it builds one of two node types.
+Statement *Parser::assignmentStatement() {
+   // The caller (statement()) consumes the NEWLINE after it.
    Token variable = tokenizer.getToken();
    if (!variable.isIdentifier())
        die("Parser::assignmentStatement", "expected an identifier", variable);
 
+   // One token of lookahead decides which kind of assignment this is.
+   Token next = tokenizer.getToken();
 
-   Token assignmentOperator = tokenizer.getToken();
-   if (!assignmentOperator.isAssignmentOperator())
-       die("Parser::assignmentStatement", "expected '='", assignmentOperator);
+   // x[i] = value
+   if (next.isOpenBracket()) {
+       // Parse order matches the spec's evaluation order: target, index, RHS.
+       ExprNode *index = relExpr();
 
+       Token closeBracket = tokenizer.getToken();
+       if (!closeBracket.isCloseBracket()) {
+           delete index;
+           die("Parser::assignmentStatement", "expected ']' after index", closeBracket);
+       }
+
+       Token assignmentOperator = tokenizer.getToken();
+       if (!assignmentOperator.isAssignmentOperator()) {
+           delete index;
+           die("Parser::assignmentStatement", "expected '='", assignmentOperator);
+       }
+
+       ExprNode *value = relExpr();
+       return new IndexAssignmentStatement(variable.identifier(), index, value);
+   }
+
+   // x = value   (same as Phase 3)
+   if (!next.isAssignmentOperator())
+       die("Parser::assignmentStatement", "expected '=' or '['", next);
 
    return new AssignmentStatement(variable.identifier(), relExpr());
+}
+
+// Phase 4: <append-statement> -> "append" "(" <rel-expr> "," <rel-expr> ")"
+// append is a statement (it returns nothing); pop is an expression (it returns a value).
+AppendStatement *Parser::appendStatement() {
+   Token appendKeyword = tokenizer.getToken();
+   if (!appendKeyword.isAppendKeyword())
+       die("Parser::appendStatement", "expected 'append' keyword", appendKeyword);
+
+   Token openParen = tokenizer.getToken();
+   if (!openParen.isOpenParen())
+       die("Parser::appendStatement", "expected '(' after append", openParen);
+
+   ExprNode *target = relExpr();
+
+   Token comma = tokenizer.getToken();
+   if (!comma.isComma()) {
+       delete target;
+       die("Parser::appendStatement", "expected ',' between append arguments", comma);
+   }
+
+   ExprNode *value = relExpr();
+
+   Token closeParen = tokenizer.getToken();
+   if (!closeParen.isCloseParen()) {
+       delete target;
+       delete value;
+       die("Parser::appendStatement", "expected ')' after append arguments", closeParen);
+   }
+
+   return new AppendStatement(target, value);
 }
 
 // Added: The derived class for print-statement -> "print" <rel-expr>
@@ -413,21 +483,76 @@ ExprNode *Parser::arithTerm() {
 
 
 ExprNode *Parser::arithPrimary() {
-   // <arith-primary> -> [ <sign> ] <arith-atom>
+   // Phase 4: <arith-primary> -> [ <sign> ] <postfix-expression>
+   // The sign wraps the whole postfix expression, so -x[0] means -(x[0]).
    Token token = tokenizer.getToken();
    if (token.isAdditionOperator() || token.isSubtractionOperator())
-       return new UnaryExprNode(token, arithAtom());
+       return new UnaryExprNode(token, postfixExpression());
 
 
    tokenizer.ungetToken();
-   return arithAtom();
+   return postfixExpression();
+}
+
+// Phase 4: <postfix-expression> -> <atom> [ "[" <rel-expr> "]" ]
+// "[ ... ]" in the grammar means optional, so this is an if, not a loop:
+// x[0] is allowed, x[0][1] is not part of Phase 4.
+ExprNode *Parser::postfixExpression() {
+    ExprNode *target = arithAtom();
+
+    Token openBracket = tokenizer.getToken();
+    if (!openBracket.isOpenBracket()) {
+        // No subscript, so give the token back for the caller to read.
+        tokenizer.ungetToken();
+        return target;
+    }
+
+    ExprNode *index = relExpr();
+
+    Token closeBracket = tokenizer.getToken();
+    if (!closeBracket.isCloseBracket()) {
+        // die() exits, so free both nodes we own first.
+        delete target;
+        delete index;
+        die("Parser::postfixExpression", "expected ']' after subscript", closeBracket);
+    }
+
+    // The new node takes ownership of target and index.
+    return new SubscriptExpr(openBracket, target, index);
+}
+
+// Phase 4: <one-argument-call> -> <one-argument-name> "(" <rel-expr> ")"
+// The caller has already consumed the name token (int, float, str, len, split, pop).
+// Parsing is the same for all six; only the node we build differs.
+ExprNode *Parser::oneArgumentCall(const Token &name) {
+    Token openParen = tokenizer.getToken();
+    if (!openParen.isOpenParen())
+        die("Parser::oneArgumentCall", "expected '(' after function name", openParen);
+
+    ExprNode *argument = relExpr();
+
+    Token closeParen = tokenizer.getToken();
+    if (!closeParen.isCloseParen()) {
+        delete argument;
+        die("Parser::oneArgumentCall", "expected ')' after argument", closeParen);
+    }
+
+    if (name.isStrKeyword())   return new StrConversion(name, argument);
+    if (name.isIntKeyword())   return new IntConversion(name, argument);
+    if (name.isFloatKeyword()) return new FloatConversion(name, argument);
+    if (name.isLenKeyword())   return new LenExpr(name, argument);
+    if (name.isSplitKeyword()) return new SplitExpr(name, argument);
+    if (name.isPopKeyword())   return new PopExpr(name, argument);
+
+    // Only reachable if a caller passes a name that isn't one of the six.
+    delete argument;
+    die("Parser::oneArgumentCall", "unknown one-argument function", name);
 }
 
 // Phase 3: added support for double, bool and string literal types and str conversion
+// Phase 4: <atom> -> <id> | <literal> | <list-literal> | <input-expression>
+//                  | <one-argument-call> | "(" <rel-expr> ")"
 ExprNode *Parser::arithAtom() {
-    // <arith-atom> -> <id> | <literal>
-    //              | "str" "(" <rel-expr> ")"
-    //              | "(" <rel-expr> ")"
    Token token = tokenizer.getToken();
 
 
@@ -441,35 +566,57 @@ ExprNode *Parser::arithAtom() {
        return new StringLiteral(token);
    if (token.isIdentifier())
        return new Variable(token);
-   // Phase 3: str conversion
-   if (token.isStrKeyword()) {
+   // Phase 4: str was the only call in Phase 3. All six calls now share one helper.
+   if (token.isStrKeyword() || token.isIntKeyword() || token.isFloatKeyword() ||
+       token.isLenKeyword() || token.isSplitKeyword() || token.isPopKeyword())
+       return oneArgumentCall(token);
+
+   // Phase 4: <input-expression> -> "input" "(" ")"   (no arguments)
+   if (token.isInputKeyword()) {
        Token openParen = tokenizer.getToken();
-
        if (!openParen.isOpenParen())
-           die("Parser::arithAtom", "expected '(' after str", openParen);
-
-       ExprNode *expression = relExpr();
-
+           die("Parser::arithAtom", "expected '(' after input", openParen);
        Token closeParen = tokenizer.getToken();
-
-       if (!closeParen.isCloseParen()) {
-           delete expression;
-           die("Parser::arithAtom", "expected ')' after str expression", closeParen);
+       if (!closeParen.isCloseParen())
+           die("Parser::arithAtom", "expected ')' after input(", closeParen);
+       return new InputExpr(token, nullptr);
+   }
+   // Phase 4: <list-literal> -> "[" [ <rel-expr> { "," <rel-expr> } ] "]"
+   if (token.isOpenBracket()) {
+         std::vector<ExprNode*> elements;
+    
+       Token next = tokenizer.getToken();
+       if (!next.isCloseBracket()) {
+           tokenizer.ungetToken();
+           while (true) {
+            elements.push_back(relExpr());
+            next = tokenizer.getToken();
+            if (next.isCloseBracket()) {
+                break;
+            } else if (!next.isComma()) {
+                for (ExprNode *element : elements) {
+                    delete element;
+                }
+                die("Parser::arithAtom", "expected ',' or ']' in list literal", next);
+            }
+        }
        }
-       return new StrConversion(token, expression);
+       // ListLiteral takes ownership of every element node.
+       return new ListLiteral(token, std::move(elements));
    }
 
+   // "(" <rel-expr> ")": the parentheses only group, so return the inner node.
    if (token.isOpenParen()) {
        ExprNode *expression = relExpr();
        Token closeParen = tokenizer.getToken();
        if (!closeParen.isCloseParen()) {
            delete expression;
            die("Parser::arithAtom", "expected ')'", closeParen);
-           }
+       }
        return expression;
    }
 
-
-   die("Parser::arithAtom", "expected an identifier, literal, str, or '('", token);
+   die("Parser::arithAtom",
+       "expected an identifier, literal, list, input(), function call, or '('", token);
 }
 

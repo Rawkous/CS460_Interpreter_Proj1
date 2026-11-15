@@ -9,11 +9,6 @@
 #include <string>
 #include <cstddef>
 
-
-// Throws unless value is an integer >= 0. Does not take ownership.
-std::size_t requireIndex(const ValueDescriptor *value, const std::string &operation);
-
-
 class ExprNode {
 public:
     explicit ExprNode(Token token);
@@ -104,6 +99,11 @@ public:
     void print() const override;
     [[nodiscard]] ValueDescriptor *evaluate(const SymbolTable &symbolTable) const override;
 };
+
+
+// Throws unless value is an integer >= 0. Does not take ownership.
+std::size_t requireIndex(const ValueDescriptor *value, const std::string &operation);
+
 
 
 //Phase 4: <list-literal> -> "[" [ <rel-expr> { "," <rel-expr> } ] "]"
@@ -233,4 +233,3 @@ private:
 
 
 #endif // EXPRINTER_EXPR_HPP
-

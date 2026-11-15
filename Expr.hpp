@@ -106,7 +106,7 @@ std::size_t requireIndex(const ValueDescriptor *value, const std::string &operat
 
 
 
-//Phase 4: <list-literal> -> "[" [ <rel-expr> { "," <rel-expr> } ] "]"
+// Phase 4 grammar: <list-literal> → [ [ <rel-expr> { , <rel-expr> } ] ]
 class ListLiteral final : public ExprNode {
 public:
     // token is the '[' token (used for error line/column)
@@ -219,8 +219,8 @@ private:
 // Phase 4: input() or input(prompt)
 class InputExpr final : public ExprNode {
 public:
-    InputExpr(Token token, ExprNode *prompt);   // prompt may be nullptr
-    ~InputExpr() override;                      // delete prompt; (deleting nullptr is safe)
+    InputExpr(Token token, ExprNode *prompt);   
+    ~InputExpr() override;                      
     InputExpr(const InputExpr &) = delete;
     InputExpr &operator=(const InputExpr &) = delete;
 

@@ -113,4 +113,35 @@ private:
     Statements *body;
 };
 
+// Phase 4: index assignment statement
+class IndexAssignmentStatement final : public Statement {
+public:
+    IndexAssignmentStatement(std::string variableName, ExprNode *index, ExprNode *value);
+    ~IndexAssignmentStatement() override;       // delete index; delete value;
+    IndexAssignmentStatement(const IndexAssignmentStatement &) = delete;
+    IndexAssignmentStatement &operator=(const IndexAssignmentStatement &) = delete;
+
+    void evaluate(SymbolTable &symbolTable) const override;
+    void print() const override;                // name "[" index "] = " value "\n"
+private:
+    std::string variableName;
+    ExprNode *indexExpr;
+    ExprNode *valueExpr;
+};
+
+// Phase 4: append statement
+class AppendStatement final : public Statement {
+public:
+    AppendStatement(ExprNode *target, ExprNode *value);
+    ~AppendStatement() override;                // delete both
+    AppendStatement(const AppendStatement &) = delete;
+    AppendStatement &operator=(const AppendStatement &) = delete;
+
+    void evaluate(SymbolTable &symbolTable) const override;
+    void print() const override;                // "append(" target ", " value ")\n"
+private:
+    ExprNode *targetExpr;
+    ExprNode *valueExpr;
+};
+
 #endif // EXPRINTER_STATEMENTS_HPP

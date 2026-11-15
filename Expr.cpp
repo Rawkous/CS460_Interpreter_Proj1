@@ -3,6 +3,8 @@
 #include <string>
 #include <utility>
 #include <cstdint>
+#include <stdexcept>
+#include <iostream>
 
 #include "Expr.hpp"
 #include "ListObject.hpp"
@@ -350,6 +352,19 @@ ValueDescriptor *Variable::evaluate(const SymbolTable &symbolTable) const {
    return symbolTable.getValueFor(token().identifier())->clone();
 }
 
+// Phase 4: helper function implementation
+std::size_t requireIndex(const ValueDescriptor *value, const std::string &operation) {
+    if (value->type() != Type::integer) {
+        throw runtime_error("type error: " + operation + ": index must be int, got " + value->typeName());
+    }
+    int64_t n = dynamic_cast<const IntegerValueDescriptor*>(value)->value();
+    if (n < 0) {
+        throw std::out_of_range(operation + ": index must be non-negative");
+    }
+    return static_cast<std::size_t>(n);
+}
+
+
 // Phase 4: new ListLiteral class
 ListLiteral::ListLiteral(Token token, std::vector<ExprNode *> elements)
     : ExprNode{std::move(token)}, elementExprs{std::move(elements)} {}
@@ -385,4 +400,134 @@ ValueDescriptor *ListLiteral::evaluate(const SymbolTable &symbolTable) const {
         }
     }
     return listValue;
+}
+
+// Phase 4: one-argument calls. Each node owns its operand expression.
+// int(x)
+IntConversion::IntConversion(Token token, ExprNode *operand) 
+: ExprNode{std::move(token)}, expression{operand} {}
+
+
+IntConversion::~IntConversion() {
+    delete expression;
+}
+
+void IntConversion::print() const {}
+
+
+ValueDescriptor *IntConversion::evaluate(const SymbolTable &symbolTable) const {
+    /*
+    int → copy; double → truncate; string → strict parse (the whole string must be an integer
+    , otherwise throw); anything else → type error
+    */
+}
+
+//Phase 4: float(x)
+FloatConversion::FloatConversion(Token token, ExprNode *operand)
+: ExprNode(std::move(token)), expression{operand} {}
+
+FloatConversion::~FloatConversion() {
+    delete expression;
+}
+
+
+void FloatConversion::print() const {}
+ValueDescriptor *FloatConversion::evaluate(const SymbolTable &symbolTable) const {
+    /*
+    int/double → double; 
+    string → strict parse (std::stod plus a check that every character was consumed);
+     otherwise type error*/
+}
+
+// Phase 4: len(x): x is a string or a list
+LenExpr::LenExpr(Token token, ExprNode *operand) 
+: ExprNode(std::move(token)), expression{operand} {}
+
+LenExpr::~LenExpr() {
+    delete expression;
+}
+
+void LenExpr::print() const {}
+ValueDescriptor *LenExpr::evaluate(const SymbolTable &symbolTable) const {
+    /*
+    tring → value().size(); 
+    list → object()->size(); 
+    otherwise type error → IntegerValueDescriptor*/
+}
+
+// Phase 4: split(s): returns a new string-category list
+SplitExpr::SplitExpr(Token token, ExprNode *operand)
+: ExprNode(std::move(token)), expression{operand} {}
+
+SplitExpr::~SplitExpr() {
+    delete expression;
+}
+
+void SplitExpr::print() const {}
+ValueDescriptor *SplitExpr::evaluate(const SymbolTable &symbolTable) const {
+    /*must be a string → new ListValueDescriptor(new ListObject(ListElementType::string)),
+     then append(new StringValueDescriptor(word))
+     for each whitespace-separated word. 
+     If an append throws, delete the list.*/
+}
+
+// Phase 4: pop(list): removes the last element and transfers it to the caller
+PopExpr::PopExpr(Token token, ExprNode *operand)
+: ExprNode(std::move(token)), expression{operand} {}
+
+PopExpr::~PopExpr() {
+    delete expression;
+}
+
+
+void PopExpr::print() const {}
+ValueDescriptor *PopExpr::evaluate(const SymbolTable &symbolTable) const {
+    /* must be a list → result = handle->object()->pop(),
+     delete the handle, 
+     return result (the caller now owns it).
+      If the list is empty, 
+      pop throws, 
+      so delete the handle before rethrowing.*/
+}
+
+// Phase 4: subscript expression
+// token = the '['
+SubscriptExpr::SubscriptExpr(Token token, ExprNode *target, ExprNode *index)
+: ExprNode(std::move(token)), targetExpr{target}, indexExpr{index} {}
+
+SubscriptExpr::~SubscriptExpr() {
+    delete targetExpr;
+    delete indexExpr;
+}                                    
+
+void SubscriptExpr::print() const {}    
+ValueDescriptor *SubscriptExpr::evaluate(const SymbolTable &symbolTable) const {
+    /*
+    target = targetExpr->evaluate          (evaluate the target first)
+    index  = nullptr
+    try:
+        index = indexExpr->evaluate
+        i = requireIndex(index, "subscript")
+        if target is a list   → result = object()->cloneElementAt(i)   (it does its own range check)
+        if target is a string → range-check i against size → new StringValueDescriptor(string(1, s[i]))
+        else                  → type error "cannot subscript <type>"
+    catch(...): delete target; delete index; throw;
+    delete target; delete index; return result
+    */
+}
+
+// Phase 4: input() or input(prompt)
+
+InputExpr::InputExpr(Token token, ExprNode *prompt)
+: ExprNode(std::move(token)), promptExpr{prompt} {}  // prompt may be nullptr
+
+InputExpr::~InputExpr() {
+    delete promptExpr;
+}                     
+
+void InputExpr::print() const {}
+ValueDescriptor *InputExpr::evaluate(const SymbolTable &symbolTable) const {
+    /*evaluate: if prompt → evaluate it, print toString() with no newline, delete it
+          std::getline(std::cin, line) → return new StringValueDescriptor(line)*/
+    
 }

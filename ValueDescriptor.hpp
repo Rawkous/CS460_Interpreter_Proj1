@@ -6,11 +6,13 @@
 
 class ValueDescriptor {
 public:
+    // phase 4: added list type
     enum class Type {
         integer,
         doubleValue,
         boolean,
-        string
+        string,
+        list
     };
 
     virtual ~ValueDescriptor() = default;
